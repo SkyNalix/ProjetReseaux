@@ -1,4 +1,5 @@
 import java.io.*;
+//import java.net.*;
 import java.util.ArrayList;
 
 public class Partie {
@@ -8,13 +9,17 @@ public class Partie {
     private String port;
     private String id;
     private boolean lancer;
+    private int m;
+    //private String mdp on fait des parties avec mdp en option ??
+    //Joueur chef de Partie
     
-    public Partie(ArrayList<Joueur> listeJoueur,String port,String id,boolean lancer,int maxJoueur){
+    public Partie(ArrayList<Joueur> listeJoueur,String port,String id,boolean lancer,int maxJoueur,int m){
         this.listeJoueur = listeJoueur;
         this.id = id;
         this.port = port;
         this.lancer = lancer;
         this.maxJoueur = maxJoueur;
+        this.m = m;
     }
 
     public int getNbJoueur(){
@@ -23,6 +28,10 @@ public class Partie {
 
     public boolean getLancer(){
         return this.lancer;
+    }
+
+    public int getM(){
+        return this.m;
     }
 
     public int getMaxJoueur(){
@@ -41,6 +50,10 @@ public class Partie {
         this.port = nouveau;
     }
 
+    public void setM(int nouveau){
+        this.m = nouveau;
+    }
+
     public void setID(String nouveau){
         this.id = nouveau;
     }
@@ -53,12 +66,20 @@ public class Partie {
         this.maxJoueur = nouveau;
     }
 
-    public void ajouterJoueur(Joueur nouveau){
+    public boolean ajouterJoueur(Joueur nouveau){
         if(this.listeJoueur.contains(nouveau) == false && this.getNbJoueur() < this.getMaxJoueur()){
             this.listeJoueur.add(nouveau);
+            return true;
         }else{
-            System.out.println("Opération impossible");
+            return false;
         }
+    }
+
+    public boolean tousPret(){
+        for(int i =0; i < this.listeJoueur.size();i++){
+            if(this.listeJoueur.get(i).getReady() == false){return false;}
+        }
+        return true;
     }
 
     public void retirerJoueur(Joueur supr){
@@ -81,7 +102,8 @@ public class Partie {
             for(int i = 0; i < liste.size(); i++ ){
                 if(liste.get(i).lancer == false && liste.get(i).getNbJoueur() > 0){
                     PrintWriter pw = new PrintWriter(x.getSocket().getOutputStream());
-                    pw.write("OGAMES " + liste.get(i).getID() + " " + String.valueOf(liste.get(i).getNbJoueur()) + "***" );
+                    pw.write("OGAMES " + liste.get(i).getID() + " " + liste.get(i).getM() + " " + String.valueOf(liste.get(i).getNbJoueur()) + "/" + 
+                    liste.get(i).maxJoueur + "***" );
                     pw.flush();
                    // String str = liste.get(i).getID() + " " + String.valueOf(liste.get(i).getNbJoueur());
                 }
@@ -91,5 +113,7 @@ public class Partie {
             e.printStackTrace();
         }
     }
+
+    
     
 }
