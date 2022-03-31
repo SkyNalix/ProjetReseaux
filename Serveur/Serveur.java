@@ -1,5 +1,7 @@
+package Serveur;
 import java.io.*;
 import java.net.*;
+//import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 public class Serveur implements Runnable{
@@ -24,8 +26,7 @@ public class Serveur implements Runnable{
             */
             pw.write("Bienvenue ! entrer un pseudo de 8 caractères svp "); 
             pw.flush();
-            String pseudo = br.readLine(); // on a le droit à readLine ?
-            System.out.println(pseudo);
+            String pseudo = Utilitaire.entrerNom(br);
 
             Joueur joueur = new Joueur(pseudo, this.socket,null,false);
             joueur.creationProfile(); //vérification du pseudo
@@ -38,36 +39,44 @@ public class Serveur implements Runnable{
             Partie.envoyerListePartie(joueur,listePartie);
 
             while(true){ //boucle pour commande
-                String x = br.readLine();
+                Thread.sleep(1000);
+                String x = Utilitaire.lecture2(br);
+                System.out.println("|" + x + "|");
 
-                if(x.equals("GAMES")){
+                if(x.equals("GAMES?***") && !joueur.getReady()){ //GAMES*** affiche le nb de partie non lancé
                     pw.write("GAMES " + Partie.getNbPartie(listePartie) + "***"); pw.flush();
-                }else if(x.startsWith("OGAMES") && x.endsWith("***")){
                     Partie.envoyerListePartie(joueur, listePartie);
-                }else if(x.startsWith("NEWPL") && x.endsWith("***")){
-                    if(joueur.getPartie() == null){
+                }else if(x.startsWith("NEWPL") && x.endsWith("***") && !joueur.getReady()){
+                    if(joueur.getPartie() == null){ // NEWPL id port*** crée une partie (id = id joueur)
                         Partie p = joueur.creerPartie(x);
                         joueur.rejoindrePartie(x);
                         listePartie.add(p);
                     }else{pw.write("REGNO***"); pw.flush();}
 
-                }else if(x.startsWith("REGIS") && x.endsWith("***")){
-                        if(joueur.rejoindrePartie(x)){
+                }else if(x.startsWith("REGIS") && x.endsWith("***") && !joueur.getReady()){
+                        if(joueur.rejoindrePartie(x)){  //REGIS id port m***
                             pw.write("REGOK***");pw.flush();
                         }else{pw.write("REGNO***");pw.flush();}
 
-                }else if(x.startsWith("CONNECT") && x.endsWith("***")){ //version avec moins de Paramètre
+                }else if(x.startsWith("CONNECT") && x.endsWith("***") && !joueur.getReady()){ //version avec moins de Paramètre
                     if(joueur.connexionSimple(x) == true ){ // CONNECT NOMPARTIE***
                         pw.write("REGOK***");pw.flush();
                     }else{pw.write("REGNO***");pw.flush();}
 
-                }else if(x.startsWith("START")  && x.endsWith("***")){
+                }else if(x.equals("UNREG***") && !joueur.getReady()){ //UNREG*** quitte la partie 
+                    pw.write("UNROK" + joueur.getPartie().getM() + "***");
+                    joueur.getPartie().retirerJoueur(joueur);
+                    joueur.setPartie(null);
+                }else if(x.equals("START***") && joueur.getPartie() != null) { //START*** bloque dans la game,attends le lancement
                     joueur.setReady(true);
                     if(joueur.getPartie().tousPret()){
+                        System.out.println("tout le monde est prêt");
                         //joueur.getPartie.launch() Broadcast?
                     }
+                }else if(x.startsWith("LIST?") && x.endsWith("***") ){ //LIST? numPartie*** affiche les joueurs de la 
+                        joueur.listePartie(x, pw);                      // partie demandé
 
-                }else if(x.startsWith("INVITE") && x.endsWith("***")){
+                }else if(x.startsWith("INVITE") && x.endsWith("***") && !joueur.getReady()){
                     
                 }else{
                     pw.write("DUNNO***");  pw.flush();

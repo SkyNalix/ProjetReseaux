@@ -1,3 +1,4 @@
+package Serveur;
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
@@ -73,34 +74,25 @@ public class Joueur {
     }
 
     public Partie creerPartie(String str){
-        //on decrypte le str
+        //on decrypte le str de la Forme NEWPL id port***
         String res = "";
         int compteur = 0;
         for(int i = 6;str.charAt(i) != ' ';i++){
                 res += Character.toString(str.charAt(i));
                 compteur = i;
         }
-        String id = res;
+        String id = res; 
         res = "";
-        System.out.println(compteur);
-
-        for(int j = compteur+2;str.charAt(j) != ' ';j++){
+        for(int j = compteur+2;j < str.length()-3;j++){
             res += Character.toString(str.charAt(j));
             compteur = j;
         }
         String port = res;
-        res = "";
-        System.out.println(port);
-        
-
-        for(int k = compteur+2; k < str.length()-3;k ++){
-            res += Character.toString(str.charAt(k)); 
-        }
-        System.out.println(compteur);
-        int m = Integer.valueOf(res);
+        //int t = 0;
+        if(id.length() != 8){return null;}//rajouter test pour port
 
         ArrayList<Joueur> listeJoueur = new ArrayList<>();
-        Partie partie = new Partie(listeJoueur, port, id, false, 2,m);
+        Partie partie = new Partie(listeJoueur, port, id, false, 2,Utilitaire.RandomM());
         partie.ajouterJoueur(this);
         this.enJeu = partie;
 
@@ -132,12 +124,17 @@ public class Joueur {
                 res += Character.toString(str.charAt(i));
                 compteur = i;
         }
+        System.out.println(res);
+        if(res.length() != 8)
+            System.out.println("PSEUDO INCCORECT");
         res = "";
 
         for(int j = compteur +2;str.charAt(j) != ' ';j++){
             res += Character.toString(str.charAt(j));
             compteur = j;
         }
+        if(res.length() != 4)
+            System.out.println("PORT INCCORECT");
         res = "";
 
         for(int k = compteur +2 ; k < str.length()-3;k++){
@@ -159,5 +156,21 @@ public class Joueur {
         if(this.getPartie() != null){
             
         }
+    }
+
+    public void listePartie(String x,PrintWriter pw){
+        String res="";
+        for(int i = 6; i <  x.length()-3;i++){
+            res += Character.toString(x.charAt(i));
+        }
+        int m = Integer.valueOf(res);
+        
+        for(int j =0; j < Serveur.listePartie.size();j++){
+            if(Serveur.listePartie.get(j).getM() == m){
+                Serveur.listePartie.get(j).listePartie(pw);
+                return;
+            }
+        }
+        pw.write("DUNNO***");pw.flush();
     }
 }

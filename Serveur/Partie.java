@@ -1,3 +1,5 @@
+package Serveur;
+
 import java.io.*;
 //import java.net.*;
 import java.util.ArrayList;
@@ -112,6 +114,18 @@ public class Partie {
         }catch(Exception e){
             e.printStackTrace();
         }
+    }
+
+    public void listePartie(PrintWriter pw){
+        pw.write("LIST! "+ this.getM() + " " + this.listeJoueur.size() + "***");
+        for(int i =0; i < this.listeJoueur.size();i++){
+            pw.write("PLAYER "+ this.listeJoueur.get(i).getPseudo() + " ");
+            pw.flush();
+        }
+    }
+
+    public void launchGame(){
+        //boucle for qui envoie msg de lancement ou broadcast ?
     }
 
     
