@@ -1,7 +1,4 @@
-package Serveur;
-
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 

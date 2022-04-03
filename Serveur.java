@@ -1,4 +1,4 @@
-package Serveur;
+
 import java.io.*;
 import java.net.*;
 //import java.nio.ByteBuffer;
@@ -24,11 +24,11 @@ public class Serveur implements Runnable{
                 2) choix connexion/creation profil
                 
             */
-            pw.write("Bienvenue ! entrer un pseudo de 8 caractères svp "); 
-            pw.flush();
-            String pseudo = Utilitaire.entrerNom(br);
+           // pw.write("Bienvenue ! entrer un pseudo de 8 caractères svp "); 
+           // pw.flush();
+           // String pseudo = Utilitaire.entrerNom(br);
 
-            Joueur joueur = new Joueur(pseudo, this.socket,null,false);
+            Joueur joueur = new Joueur("Invite00", this.socket,null,false);
             joueur.creationProfile(); //vérification du pseudo
             
             //envoie des listes de partie

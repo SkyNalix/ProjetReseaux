@@ -1,4 +1,3 @@
-package Serveur;
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
@@ -90,6 +89,7 @@ public class Joueur {
         String port = res;
         //int t = 0;
         if(id.length() != 8){return null;}//rajouter test pour port
+        this.setPseudo(id);
 
         ArrayList<Joueur> listeJoueur = new ArrayList<>();
         Partie partie = new Partie(listeJoueur, port, id, false, 2,Utilitaire.RandomM());
@@ -172,5 +172,9 @@ public class Joueur {
             }
         }
         pw.write("DUNNO***");pw.flush();
+    }
+
+    public static void main(String[] args){
+        
     }
 }

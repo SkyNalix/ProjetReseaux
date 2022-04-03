@@ -1,7 +1,4 @@
-package Serveur;
-
 import java.io.*;
-//import java.net.*;
 import java.util.ArrayList;
 
 public class Partie {
@@ -104,10 +101,8 @@ public class Partie {
             for(int i = 0; i < liste.size(); i++ ){
                 if(liste.get(i).lancer == false && liste.get(i).getNbJoueur() > 0){
                     PrintWriter pw = new PrintWriter(x.getSocket().getOutputStream());
-                    pw.write("OGAMES " + liste.get(i).getID() + " " + liste.get(i).getM() + " " + String.valueOf(liste.get(i).getNbJoueur()) + "/" + 
-                    liste.get(i).maxJoueur + "***" );
+                    pw.write("OGAMES " + liste.get(i).getID() + " " + liste.get(i).getM() + "***" );
                     pw.flush();
-                   // String str = liste.get(i).getID() + " " + String.valueOf(liste.get(i).getNbJoueur());
                 }
 
             }
@@ -119,7 +114,7 @@ public class Partie {
     public void listePartie(PrintWriter pw){
         pw.write("LIST! "+ this.getM() + " " + this.listeJoueur.size() + "***");
         for(int i =0; i < this.listeJoueur.size();i++){
-            pw.write("PLAYER "+ this.listeJoueur.get(i).getPseudo() + " ");
+            pw.write("PLAYER "+ this.listeJoueur.get(i).getPseudo() + "***");
             pw.flush();
         }
     }
