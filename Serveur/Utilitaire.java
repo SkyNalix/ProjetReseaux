@@ -1,4 +1,3 @@
-package Serveur;
 import java.io.BufferedReader;
 import java.nio.ByteBuffer;
 import java.util.Random;
