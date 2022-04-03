@@ -7,17 +7,27 @@ public class Joueur {
     private Socket socketAssocie;
     private Partie enJeu;
     private boolean isReady;
+    private String port;
 
-    public Joueur(String pseudo,Socket socketAssocie,Partie enJeu,boolean isReady){
+    public Joueur(String pseudo,Socket socketAssocie,Partie enJeu,boolean isReady,String port){
         //condition des 8 caractères ?
         this.pseudo = pseudo;
         this.socketAssocie = socketAssocie;
         this.enJeu = enJeu;
         this.isReady = isReady;
+        this.port = port;
     }
 
     public String getPseudo(){
         return this.pseudo;
+    }
+
+    public String getPort(){
+        return this.port;
+    }
+
+    public void setPort(String nouveau){
+        this.port = nouveau;
     }
 
     public Socket getSocket(){
@@ -42,6 +52,31 @@ public class Joueur {
 
     public void setReady(boolean nouveau){
         this.isReady = nouveau;
+    }
+
+    public boolean portUnique(String port){
+        Serveur.listeJoueur.remove(this);
+        for(int i = 0; i < Serveur.listeJoueur.size();i++){
+            if(Serveur.listeJoueur.get(i).getPort().equals(port) 
+            && Serveur.listeJoueur.get(i).getPseudo().equals(this.getPseudo()) == false){
+                Serveur.listeJoueur.add(this);
+                return false;
+            }
+        }
+        Serveur.listeJoueur.add(this);
+        return true;
+    }
+
+    public boolean pseudoUnique(String pseudo){
+        Serveur.listeJoueur.remove(this);
+        for(int i = 0; i < Serveur.listeJoueur.size();i++){
+            if(Serveur.listeJoueur.get(i).getPseudo().equals(pseudo)){ 
+                Serveur.listeJoueur.add(this);
+                return false;
+            }
+        }
+        Serveur.listeJoueur.add(this);
+        return true;
     }
 
     public void envoyerMessage(String msg){
@@ -80,16 +115,17 @@ public class Joueur {
                 res += Character.toString(str.charAt(i));
                 compteur = i;
         }
-        String id = res; 
-        res = "";
+        String id = res; res = "";
+
         for(int j = compteur+2;j < str.length()-3;j++){
             res += Character.toString(str.charAt(j));
             compteur = j;
         }
         String port = res;
         //int t = 0;
-        if(id.length() != 8){return null;}//rajouter test pour port
+        if(id.length() != 8 || portUnique(port) == false || pseudoUnique(id) == false){return null;}//rajouter test pour port
         this.setPseudo(id);
+        this.setPort(port);
 
         ArrayList<Joueur> listeJoueur = new ArrayList<>();
         Partie partie = new Partie(listeJoueur, port, id, false, 2,Utilitaire.RandomM());
@@ -124,17 +160,20 @@ public class Joueur {
                 res += Character.toString(str.charAt(i));
                 compteur = i;
         }
-        System.out.println(res);
-        if(res.length() != 8)
-            System.out.println("PSEUDO INCCORECT");
+        if(res.length() != 8 || pseudoUnique(res) == false ){
+            return false;
+        }
+        this.setPseudo(res);
         res = "";
 
         for(int j = compteur +2;str.charAt(j) != ' ';j++){
             res += Character.toString(str.charAt(j));
             compteur = j;
         }
-        if(res.length() != 4)
-            System.out.println("PORT INCCORECT");
+        if(res.length() != 4 || portUnique(res) == false){
+            return false;
+        }
+        this.setPort(res);    
         res = "";
 
         for(int k = compteur +2 ; k < str.length()-3;k++){

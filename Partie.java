@@ -1,4 +1,5 @@
 import java.io.*;
+//import java.net.*;
 import java.util.ArrayList;
 
 public class Partie {
@@ -101,7 +102,7 @@ public class Partie {
             for(int i = 0; i < liste.size(); i++ ){
                 if(liste.get(i).lancer == false && liste.get(i).getNbJoueur() > 0){
                     PrintWriter pw = new PrintWriter(x.getSocket().getOutputStream());
-                    pw.write("OGAMES " + liste.get(i).getID() + " " + liste.get(i).getM() + "***" );
+                    pw.write("OGAME " + liste.get(i).getID() + " " + liste.get(i).getM() + "***" );
                     pw.flush();
                 }
 

@@ -1,4 +1,3 @@
-
 import java.io.*;
 import java.net.*;
 //import java.nio.ByteBuffer;
@@ -28,8 +27,9 @@ public class Serveur implements Runnable{
            // pw.flush();
            // String pseudo = Utilitaire.entrerNom(br);
 
-            Joueur joueur = new Joueur("Invite00", this.socket,null,false);
+            Joueur joueur = new Joueur("Invite00", this.socket,null,false,"0000");
             joueur.creationProfile(); //vérification du pseudo
+            listeJoueur.add(joueur);
             
             //envoie des listes de partie
             pw.write("GAMES " + Partie.getNbPartie(listePartie) + "***");
@@ -43,14 +43,18 @@ public class Serveur implements Runnable{
                 String x = Utilitaire.lecture2(br);
                 System.out.println("|" + x + "|");
 
-                if(x.equals("GAMES?***") && !joueur.getReady()){ //GAMES*** affiche le nb de partie non lancé
+                if(x.equals("GAME?***") && !joueur.getReady()){ //GAMES*** affiche le nb de partie non lancé
                     pw.write("GAMES " + Partie.getNbPartie(listePartie) + "***"); pw.flush();
                     Partie.envoyerListePartie(joueur, listePartie);
                 }else if(x.startsWith("NEWPL") && x.endsWith("***") && !joueur.getReady()){
                     if(joueur.getPartie() == null){ // NEWPL id port*** crée une partie (id = id joueur)
                         Partie p = joueur.creerPartie(x);
-                        joueur.rejoindrePartie(x);
-                        listePartie.add(p);
+                        if(p == null){
+                            pw.write("REGNO***"); pw.flush();
+                        }else{
+                            joueur.rejoindrePartie(x);
+                            listePartie.add(p);
+                        }
                     }else{pw.write("REGNO***"); pw.flush();}
 
                 }else if(x.startsWith("REGIS") && x.endsWith("***") && !joueur.getReady()){
@@ -64,7 +68,7 @@ public class Serveur implements Runnable{
                     }else{pw.write("REGNO***");pw.flush();}
 
                 }else if(x.equals("UNREG***") && !joueur.getReady()){ //UNREG*** quitte la partie 
-                    pw.write("UNROK" + joueur.getPartie().getM() + "***");
+                    pw.write("UNROK" + " " + joueur.getPartie().getM() + "***"); pw.flush();
                     joueur.getPartie().retirerJoueur(joueur);
                     joueur.setPartie(null);
                 }else if(x.equals("START***") && joueur.getPartie() != null) { //START*** bloque dans la game,attends le lancement
@@ -91,9 +95,9 @@ public class Serveur implements Runnable{
 
     public static void main(String[] args){
 
-        Joueur j1 = new Joueur("Test0000",null,null,false);
-        Joueur j2 = new Joueur("Test0001",null,null,false);
-        Joueur j3 = new Joueur("Test0002",null,null,false);
+        Joueur j1 = new Joueur("Test0000",null,null,false,"0001");
+        Joueur j2 = new Joueur("Test0001",null,null,false,"0002");
+        Joueur j3 = new Joueur("Test0002",null,null,false,"0003");
         ArrayList<Joueur> p2 = new ArrayList<>();
         
 
