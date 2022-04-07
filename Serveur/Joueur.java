@@ -7,9 +7,9 @@ public class Joueur {
     private Socket socketAssocie;
     private Partie enJeu;
     private boolean isReady;
-    private String port;
+    private DatagramSocket port;
 
-    public Joueur(String pseudo,Socket socketAssocie,Partie enJeu,boolean isReady,String port){
+    public Joueur(String pseudo,Socket socketAssocie,Partie enJeu,boolean isReady,DatagramSocket port){
         //condition des 8 caractères ?
         this.pseudo = pseudo;
         this.socketAssocie = socketAssocie;
@@ -22,12 +22,17 @@ public class Joueur {
         return this.pseudo;
     }
 
-    public String getPort(){
+    public DatagramSocket getPort(){
         return this.port;
     }
 
     public void setPort(String nouveau){
-        this.port = nouveau;
+        try{
+            DatagramSocket sock = new DatagramSocket(Integer.parseInt(nouveau));
+            this.port = sock;
+        }catch(Exception e){
+            e.printStackTrace();
+        }
     }
 
     public Socket getSocket(){
@@ -57,7 +62,7 @@ public class Joueur {
     public boolean portUnique(String port){
         Serveur.listeJoueur.remove(this);
         for(int i = 0; i < Serveur.listeJoueur.size();i++){
-            if(Serveur.listeJoueur.get(i).getPort().equals(port) 
+            if(Serveur.listeJoueur.get(i).getPort().getLocalPort() == Integer.parseInt(port) 
             && Serveur.listeJoueur.get(i).getPseudo().equals(this.getPseudo()) == false){
                 Serveur.listeJoueur.add(this);
                 return false;
@@ -123,12 +128,12 @@ public class Joueur {
         }
         String port = res;
         //int t = 0;
-        if(id.length() != 8 || portUnique(port) == false || pseudoUnique(id) == false){return null;}//rajouter test pour port
+        if(id.length() != 8 || port.length() !=4 || portUnique(port) == false || pseudoUnique(id) == false ){return null;}
         this.setPseudo(id);
-        this.setPort(port);
+        if(this.getPort().getLocalPort() != Integer.parseInt(port)){this.setPort(port);}
 
         ArrayList<Joueur> listeJoueur = new ArrayList<>();
-        Partie partie = new Partie(listeJoueur, port, id, false, 2,Utilitaire.RandomM());
+        Partie partie = new Partie(listeJoueur, port, id, false,32,Utilitaire.RandomM(256));
         partie.ajouterJoueur(this);
         this.enJeu = partie;
 
@@ -161,6 +166,7 @@ public class Joueur {
                 compteur = i;
         }
         if(res.length() != 8 || pseudoUnique(res) == false ){
+            System.out.println("hey !");
             return false;
         }
         this.setPseudo(res);
@@ -171,6 +177,7 @@ public class Joueur {
             compteur = j;
         }
         if(res.length() != 4 || portUnique(res) == false){
+            System.out.println("ho !");
             return false;
         }
         this.setPort(res);    
@@ -181,6 +188,7 @@ public class Joueur {
         }
         int m = Integer.valueOf(res);
         for(int l =0; l < Serveur.listePartie.size();l++){
+            System.out.println(Serveur.listePartie.get(l).getM() );
             if(Serveur.listePartie.get(l).getM() == m){
                 if(Serveur.listePartie.get(l).ajouterJoueur(this)){
                     this.enJeu = Serveur.listePartie.get(l);
@@ -213,7 +221,40 @@ public class Joueur {
         pw.write("DUNNO***");pw.flush();
     }
 
-    public static void main(String[] args){
-        
+    
+
+    public void chatter(String str){
+        String id ="";
+        for(int i = 6; i < str.length()-3;i++){
+            id += str.charAt(i);
+        }
+        System.out.println("id:" + id);
+        for(int i =0;i < Serveur.listeJoueur.size();i++){
+            if(Serveur.listeJoueur.get(i).getPseudo().equals(id)){
+                try {
+                    
+                    String s = "Envoi";
+                    byte[] data = s.getBytes();
+                    DatagramPacket paquet = new DatagramPacket(data,data.length,
+                        Serveur.listeJoueur.get(i).socketAssocie.getInetAddress(),
+                        Serveur.listeJoueur.get(i).socketAssocie.getPort()
+                    );
+
+                    this.getPort().send(paquet);
+                    
+                }catch(Exception e){
+                    e.printStackTrace();
+                }
+            }
+        }
     }
+
+    public void recevoirMsg(){
+        try{
+            byte[] data = new byte[100];
+            DatagramPacket x = new DatagramPacket(data,data.length);
+            this.port.receive(x);
+        }catch(Exception e){e.printStackTrace();}
+    }
+
 }

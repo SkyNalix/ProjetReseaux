@@ -18,19 +18,11 @@ public class Serveur implements Runnable{
         try {
             BufferedReader br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
             PrintWriter pw = new PrintWriter(this.socket.getOutputStream());           
-            /*connexion :
-                1) message d'acceuil
-                2) choix connexion/creation profil
-                
-            */
-           // pw.write("Bienvenue ! entrer un pseudo de 8 caractères svp "); 
-           // pw.flush();
-           // String pseudo = Utilitaire.entrerNom(br);
 
-            Joueur joueur = new Joueur("Invite00", this.socket,null,false,"0000");
+            Joueur joueur = new Joueur("Invite00", this.socket,null,false,new DatagramSocket(Utilitaire.randomPort()));
             joueur.creationProfile(); //vérification du pseudo
             listeJoueur.add(joueur);
-            
+
             //envoie des listes de partie
             pw.write("GAMES " + Partie.getNbPartie(listePartie) + "***");
             pw.flush();
@@ -41,8 +33,8 @@ public class Serveur implements Runnable{
             while(true){ //boucle pour commande
                 Thread.sleep(1000);
                 String x = Utilitaire.lecture2(br);
+                if(this.socket.isClosed()){return ;}
                 System.out.println("|" + x + "|");
-
                 if(x.equals("GAME?***") && !joueur.getReady()){ //GAMES*** affiche le nb de partie non lancé
                     pw.write("GAMES " + Partie.getNbPartie(listePartie) + "***"); pw.flush();
                     Partie.envoyerListePartie(joueur, listePartie);
@@ -54,6 +46,7 @@ public class Serveur implements Runnable{
                         }else{
                             joueur.rejoindrePartie(x);
                             listePartie.add(p);
+                            pw.write("REGOK" + p.getM() + "***");
                         }
                     }else{pw.write("REGNO***"); pw.flush();}
 
@@ -75,13 +68,21 @@ public class Serveur implements Runnable{
                     joueur.setReady(true);
                     if(joueur.getPartie().tousPret()){
                         System.out.println("tout le monde est prêt");
-                        //joueur.getPartie.launch() Broadcast?
                     }
                 }else if(x.startsWith("LIST?") && x.endsWith("***") ){ //LIST? numPartie*** affiche les joueurs de la 
                         joueur.listePartie(x, pw);                      // partie demandé
 
-                }else if(x.startsWith("INVITE") && x.endsWith("***") && !joueur.getReady()){
-                    
+                }else if(x.startsWith("SEND?") && x.endsWith("***") && joueur.getPartie().getLancer()) {   
+                    joueur.chatter(x);
+
+                }else if(x.startsWith("DISC!") && x.endsWith("***") && joueur.getPartie() == null) { // se deconnecte 
+                    listeJoueur.remove(joueur);
+                    joueur.getPort().close();
+                    joueur.getSocket().close();
+                    return ;
+                }else if(x.equals("-1")){//si le joueur a crash
+                        System.out.println(joueur.getPseudo() + " has disconnected");
+                        return ;
                 }else{
                     pw.write("DUNNO***");  pw.flush();
                 }
@@ -94,21 +95,21 @@ public class Serveur implements Runnable{
 
 
     public static void main(String[] args){
-
-        Joueur j1 = new Joueur("Test0000",null,null,false,"0001");
-        Joueur j2 = new Joueur("Test0001",null,null,false,"0002");
-        Joueur j3 = new Joueur("Test0002",null,null,false,"0003");
-        ArrayList<Joueur> p2 = new ArrayList<>();
-        
-
-        Partie test1 = new Partie(listeJoueur, "4000", "test", false, 2,0);
-        Partie test2 = new Partie(p2, "4242", "1v1", false, 2,1);
-        test1.ajouterJoueur(j1); test1.ajouterJoueur(j2); 
-        test2.ajouterJoueur(j3);
-        listePartie.add(test1);
-        listePartie.add(test2);
-        
         try {
+            Joueur j1 = new Joueur("Vladimir",null,null,false,new DatagramSocket(4242));
+            Joueur j2 = new Joueur("Aypierre",null,null,false,new DatagramSocket(4243));
+            Joueur j3 = new Joueur("Zelenski",null,null,false,new DatagramSocket(4244));
+            ArrayList<Joueur> p2 = new ArrayList<>();
+            
+    
+            Partie test1 = new Partie(listeJoueur, "4000", "Vladimir", false, 2,32);
+            Partie test2 = new Partie(p2, "4242", "Zelenski", false, 2,32);
+            test1.ajouterJoueur(j1); test1.ajouterJoueur(j2); 
+            test2.ajouterJoueur(j3);
+            listePartie.add(test1);
+            listePartie.add(test2);
+
+
             ServerSocket servSocket = new ServerSocket(4243);
             System.out.println("lancé !");
             while(true){
