@@ -15,6 +15,24 @@ char buff[BUFF_SIZE];
 char *mess;
 char **tab;
 
+
+uint16_t host16ToLittleEndian(uint16_t b) {
+    uint16_t t = 3;
+    if (htons(t) == 3) { // si je sui en big endian
+        return (b >> 8) | (b << 8);
+    }
+    return b;
+}
+
+uint16_t littleEndian16ToHost(uint16_t b) {
+    uint16_t t = 3;
+    if (htons(t) == 3) { // si je sui en big endian
+        return (b >> 8) | (b << 8);
+    }
+    return b;
+}
+
+
 void closeConnection(int exitCode, char *error) {
     if (error != NULL)
         perror(error);
@@ -67,45 +85,107 @@ int readInput(char *stockIci) {
     return size;
 }
 
-int entreePartie() {
-    printf("Entrez 'NEWPL' ou 'REGIS'\n");
-    readInput(buff);
-    char id[BUFF_SIZE];
-    printf("Entrez votre id\n");
-    readInput(id);
-    if (strcmp(buff, "NEWPL") == 0) {
-        // [NEWPL␣id␣port***]
-        printf("NEWPL %s %d\n", id, port);
-        sprintf(mess, "NEWPL %s %x***", id, port);
 
-        send(sock, mess, strlen(mess), 0);
-        splitString(receive(), &tab);
-        if (strcmp(tab[0], "REGOK") == 0) {
-            //  [REGOK␣m***]
-            uint8_t m = strtoul(tab[1], NULL, 16);
-            printf("Partie %d créée\n", m);
-        } else if (strcmp(tab[0], "REGNO") == 0) {
-            // [REGNO***]
-            printf("Creation de partie non terminée\n");
-        }
-    } else if (strcmp(buff, "REGIS") == 0) {
-        // [REGIS␣id␣port␣m***]
-        printf("Entrez le numéro de la partie que vous souhaitez rejoindre\n");
+// les commandes a utiliser avant le commencement d'une partie
+uint8_t prePartieStart() {
+    uint8_t id_partie = -1; // id de la partie rejoint
+
+    while (1) {
+        printf("Entrez le debut de la requête que vous voulez écrire\n");
         readInput(buff);
-        printf("REGIS %s %d %s\n", id, port, buff);
-        sprintf(mess, "REGIS %s %d %s***", id, port, buff);
-        send(sock, mess, strlen(mess), 0);
-        splitString(receive(), &tab);
-        if (strcmp(tab[0], "REGOK") == 0) {
-            //  [REGOK␣m***]
-            uint8_t m = strtoul(tab[1], NULL, 16);
-            printf("Partie %d rejoint\n", m);
-        } else if (strcmp(tab[0], "REGNO") == 0) {
-            // [REGNO***]
-            printf("La partie %s n'a pas été rejoint\n", buff);
+        char id[BUFF_SIZE];
+        printf("Entrez votre id\n");
+        readInput(id);
+        if (strcmp(buff, "NEWPL") == 0) { // [NEWPL␣id␣port***]
+            printf("NEWPL %s %d\n", id, port);
+            sprintf(mess, "NEWPL %s %x***", id, port);
+
+            send(sock, mess, strlen(mess), 0);
+            splitString(receive(), &tab);
+            if (strcmp(tab[0], "REGOK") == 0) { // [REGOK␣m***]
+                uint8_t m = strtoul(tab[1], NULL, 16);
+                printf("Partie %d créée\n", m);
+                id_partie = m;
+            } else if (strcmp(tab[0], "REGNO") == 0) { // [REGNO***]
+                printf("Creation de partie non terminée\n");
+            }
+        } else if (strcmp(buff, "REGIS") == 0) { // [REGIS␣id␣port␣m***]
+            printf("Entrez le numéro de la partie\n");
+            readInput(buff);
+            printf("REGIS %s %d %s\n", id, port, buff);
+            sprintf(mess, "REGIS %s %d %s***", id, port, buff);
+            send(sock, mess, strlen(mess), 0);
+            splitString(receive(), &tab);
+            if (strcmp(tab[0], "REGOK") == 0) { //  [REGOK␣m***]
+                uint8_t m = strtoul(tab[1], NULL, 16);
+                printf("Partie %d rejoint\n", m);
+                id_partie = m;
+            } else if (strcmp(tab[0], "REGNO") == 0) { // [REGNO***]
+                printf("La partie %s n'a pas été rejoint\n", buff);
+            }
+        } else if (strcmp(buff, "START") == 0) { // [START***]
+            strcpy(mess, "START***");
+            send(sock, mess, strlen(mess), 0);
+            splitString(receive(), &tab);
+            if (strcmp(tab[0], "DUNNO")) {
+                printf("DUNNO\n");
+            } else
+                return id_partie;
+        } else if (strcmp(buff, "UNREG") == 0) { // [UNREG***]
+            strcpy(mess, "UNREG***");
+            send(sock, mess, strlen(mess), 0);
+            splitString(receive(), &tab);
+            if (strcmp(tab[0], "UNROK") == 0) { // [UNROK␣m***]
+                uint8_t m = strtoul(tab[1], NULL, 16);
+                printf("Partie %d quitté\n", m);
+            } else { // [DUNNO***]
+                printf("DUNNO");
+            }
+            id_partie = -1;
+        } else if (strcmp(buff, "SIZE?") == 0) { // [SIZE?␣m***]
+            printf("Entrez le numéro de la partie\n");
+            readInput(buff);
+            printf("SIZE? %s\n", buff);
+            sprintf(mess, "SIZE? %s***", buff);
+            send(sock, mess, strlen(mess), 0);
+            splitString(receive(), &tab);
+            if (strcmp(tab[0], "SIZE!") == 0) { // [SIZE!␣m␣h␣w***]
+                uint8_t m = strtoul(tab[1], NULL, 16);
+                uint16_t h = littleEndian16ToHost(strtoul(tab[2], NULL, 16));
+                uint16_t w = littleEndian16ToHost(strtoul(tab[3], NULL, 16));
+                printf("SIZE! %d %d %d\n", m, h, w);
+            } else if (strcmp(tab[0], "DUNNO") == 0) { // [DUNNO***]
+                printf("DUNNO\n");
+            }
+        } else if (strcmp(buff, "LIST?") == 0) { // [LIST? m***]
+            printf("Entrez le numéro de la partie\n");
+            readInput(buff);
+            printf("LIST? %s\n", buff);
+            sprintf(mess, "LIST? %s***", buff);
+            send(sock, mess, strlen(mess), 0);
+            splitString(receive(), &tab);
+            if (strcmp(tab[0], "LIST!") == 0) { // [LIST!␣m␣s***]
+                uint8_t m = strtoul(tab[1], NULL, 16);
+                uint8_t s = strtoul(tab[2], NULL, 16);
+                printf("SIZE! %d %d\n", m, s);
+                for (int i = 0; i < s; ++i) {
+                    splitString(receive(), &tab); // [PLAYR␣id***]
+                    printf("PLAYR %s\n", tab[1]);
+                }
+            } else if (strcmp(tab[0], "DUNNO") == 0) { // [DUNNO***]
+                printf("DUNNO\n");
+            }
+        } else if (strcmp(buff, "GAME?") == 0) { // [GAME? m***]
+            strcpy(mess, "GAME?***");
+            send(sock, mess, strlen(mess), 0);
+            splitString(receive(), &tab); // [GAMES␣n***]
+            uint8_t n = strtoul(tab[1], NULL, 16);
+            printf("GAMES %d", n);
+        } else {
+            closeConnection(EXIT_FAILURE, "prePartieStart");
+            return id_partie;
         }
     }
-    return 1;
 }
 
 int main(int argc, char **argv) {
@@ -160,10 +240,8 @@ int main(int argc, char **argv) {
         printf("OGAME %d %d\n", m, s);
     }
 
-    r = entreePartie();
-    if( r ) {
+    prePartieStart();
 
-    }
 
     close(sock);
     exit(EXIT_SUCCESS);
