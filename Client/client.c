@@ -6,13 +6,10 @@
 #include <string.h>
 #include <netdb.h>
 
-#define SIZE_NAME 8
 #define BUFF_SIZE 200
-#define MESS_SIZE 200
+#define MESS_SIZE 1000
 int sock;
 in_port_t port;
-char buff[BUFF_SIZE];
-char *mess;
 char **tab;
 
 
@@ -34,69 +31,98 @@ uint16_t littleEndian16ToHost(uint16_t b) {
 
 
 void closeConnection(int exitCode, char *error) {
-    if (error != NULL)
+    if (error != NULL) {
         perror(error);
+    }
     close(sock);
     exit(exitCode);
 }
 
 char *receive() {
     char *buff = malloc(BUFF_SIZE);
-    int size = recv(sock, buff, BUFF_SIZE - 1, 0);
-    if (size <= 0)
-        closeConnection(EXIT_FAILURE, "recv");
+    buff = strcpy(buff, "");
+    int size = 0;
+    int stars_counter = 0;
+    char c[2];
+    while (1) {
+        int tmp = recv(sock, c, 1, 0);
+        if (tmp <= 0)
+            closeConnection(EXIT_FAILURE, "recv");
+        c[1] = '\0';
+        if (strcmp(c, "*") == 0) {
+            if (stars_counter == 2) {
+                break;
+            } else
+                stars_counter++;
+        } else
+            strcat(buff, c);
+        size++;
+    }
     buff[size] = '\0';
     printf("recu: '%s'\n", buff);
     return buff;
 }
 
 int splitString(char *str, char ***res) {
-    char str2[strlen(str) - 2]; // removing the ending '***'
-    strncpy(str2, str, strlen(str) - 3);
-    str2[strlen(str) - 3] = '\0';
-    char copy[strlen(str2)]; // counting amount of words
-
+    char copy[strlen(str)];
+    strcpy(copy, str);
     int size = 0;
-    strcpy(copy, str2);
 
     char *mess = strtok(copy, " ");
     while (mess != NULL) {
         size++;
         mess = strtok(NULL, " ");
     }
+
     char **tab = malloc(size);
     int i = 0;
-    mess = strtok(str2, " ");
+    strcpy(copy, str);
+    mess = strtok(copy, " ");
     while (mess != NULL) {
         tab[i] = malloc(sizeof(mess));
         strcpy(tab[i], mess);
         i++;
         mess = strtok(NULL, " ");
     }
+    free(*res);
     *res = tab;
     return size;
 }
 
 int readInput(char *stockIci) {
-    int size;
-    while ((size = read(STDIN_FILENO, stockIci, BUFF_SIZE - 1)) <= 0) {}
-    stockIci[size - 1] = '\0';
-    printf("input: '%s'\n", stockIci);
+    int size = read(STDIN_FILENO, stockIci, BUFF_SIZE - 1);
+    stockIci[size - 1] = '\0'; // enleve aussi le '\n'
     return size;
 }
 
+void getGamesList(char *str) {
+    splitString(str, &tab);
+    int n = strtol(tab[1], NULL, 16);
+
+    printf("found %d games\n", n);
+    for (int i = 0; i < n; ++i) {
+        str = receive(); // [OGAME␣m␣s***]
+        splitString(str, &tab);
+        uint8_t m = strtoul(tab[1], NULL, 16);
+        uint8_t s = strtoul(tab[2], NULL, 16);
+        printf("OGAME %d %d\n", m, s);
+    }
+}
 
 // les commandes a utiliser avant le commencement d'une partie
 uint8_t prePartieStart() {
     uint8_t id_partie = -1; // id de la partie rejoint
+    char buff[BUFF_SIZE];
+    char mess[MESS_SIZE];
 
     while (1) {
         printf("Entrez le debut de la requête que vous voulez écrire\n");
         readInput(buff);
-        char id[BUFF_SIZE];
-        printf("Entrez votre id\n");
-        readInput(id);
         if (strcmp(buff, "NEWPL") == 0) { // [NEWPL␣id␣port***]
+            char id[BUFF_SIZE];
+            printf("Entrez votre id\n");
+            readInput(id);
+
             printf("NEWPL %s %d\n", id, port);
             sprintf(mess, "NEWPL %s %x***", id, port);
 
@@ -110,6 +136,10 @@ uint8_t prePartieStart() {
                 printf("Creation de partie non terminée\n");
             }
         } else if (strcmp(buff, "REGIS") == 0) { // [REGIS␣id␣port␣m***]
+            char id[BUFF_SIZE];
+            printf("Entrez votre id\n");
+            readInput(id);
+
             printf("Entrez le numéro de la partie\n");
             readInput(buff);
             printf("REGIS %s %d %s\n", id, port, buff);
@@ -160,7 +190,9 @@ uint8_t prePartieStart() {
         } else if (strcmp(buff, "LIST?") == 0) { // [LIST? m***]
             printf("Entrez le numéro de la partie\n");
             readInput(buff);
+            printf("########00000###\n");
             printf("LIST? %s\n", buff);
+
             sprintf(mess, "LIST? %s***", buff);
             send(sock, mess, strlen(mess), 0);
             splitString(receive(), &tab);
@@ -178,15 +210,13 @@ uint8_t prePartieStart() {
         } else if (strcmp(buff, "GAME?") == 0) { // [GAME? m***]
             strcpy(mess, "GAME?***");
             send(sock, mess, strlen(mess), 0);
-            splitString(receive(), &tab); // [GAMES␣n***]
-            uint8_t n = strtoul(tab[1], NULL, 16);
-            printf("GAMES %d", n);
+            getGamesList(receive()); // [GAMES␣n***]
         } else {
-            closeConnection(EXIT_FAILURE, "prePartieStart");
-            return id_partie;
+            printf("Réessayez\n");
         }
     }
 }
+
 
 int main(int argc, char **argv) {
     char *str_port = "4243";
@@ -228,20 +258,76 @@ int main(int argc, char **argv) {
     }
 
 
-    mess = receive();
-    splitString(mess, &tab); // [GAMES␣n***]
-    int n = strtol(tab[1], NULL, 16);
-    printf("found %d games\n", n);
-    for (int i = 0; i < n; ++i) {
-        mess = receive(); // [OGAME␣m␣s***]
-        splitString(mess, &tab);
-        uint8_t m = strtoul(tab[1], NULL, 16);
-        uint8_t s = strtoul(tab[2], NULL, 16);
-        printf("OGAME %d %d\n", m, s);
-    }
+    getGamesList(receive());  // [GAMES␣n***]
+
+    char buff[BUFF_SIZE];
+    char mess[MESS_SIZE];
 
     prePartieStart();
 
+    while (1) {
+        strcpy(buff, "");
+        strcpy(mess, "");
+
+        // a partir de là on est dans une partie
+        printf("Entrez le debut de la requête que vous voulez écrire\n");
+        readInput(buff);
+        if (strcmp(buff, "UPMOV") == 0 || // [UPMOV␣d***]
+            strcmp(buff, "DOMOV") == 0 || // [DOMOV␣d***]
+            strcmp(buff, "LEMOV") == 0 || // [LEMOV␣d***]
+            strcmp(buff, "RIMOV") == 0    // [RIMOV␣d***]
+                ) {
+            strcat(mess, buff);
+            strcat(mess, " ");
+            char d[BUFF_SIZE];
+            printf("Entrez le nombre de pas \n");
+            readInput(d);
+            for (int i = 3; i > 3 - ((int) strlen(d)); --i) {
+                strcat(mess, "0");
+            }
+            strcat(mess, "***");
+            send(sock, mess, strlen(mess), 0);
+
+            splitString(receive(), &tab);
+            if (strcmp(tab[0], "MOVE!") == 0) { // [MOVE!␣x␣y***]
+                printf("MOVE! %s %s\n", tab[1], tab[2]);
+            } else if (strcmp(tab[0], "MOVEF") == 0) { // [MOVEF␣x␣y␣p***]
+                printf("MOVE! %s %s %s\n", tab[1], tab[2], tab[3]);
+            }
+        } else if (strcmp(buff, "IQUiT") == 0) { // [IQUIT***]
+            strcpy(mess, "IQUIT***");
+            send(sock, mess, strlen(mess), 0);
+        } else if (strcmp(buff, "GLIS?") == 0) { // [GLIS?***]
+            strcpy(mess, "GLIS***");
+            send(sock, mess, strlen(mess), 0);
+            splitString(receive(), &tab); // [GLIS!␣s***]
+            uint8_t s = strtoul(tab[1], NULL, 16);
+            for (int i = 0; i < (int) s; ++i) {
+                char *player = receive();
+                printf("%s\n", player);
+            }
+        } else if (strcmp(buff, "MALL?") == 0) { // [MALL?␣mess***]
+            printf("Entrez le message a envoyer a tous les joueurs\n");
+            readInput(buff);
+            sprintf(mess, "MALL? %s***", buff);
+            send(sock, mess, strlen(mess), 0);
+
+            printf("%s\n", receive()); // [MALL!***]
+        } else if (strcmp(buff, "SEND?") == 0) { // [SEND?␣id␣mess***]
+            char id[10];
+            char message[200];
+            printf("Entrez le id du destinataire\n");
+            readInput(id);
+            printf("Entrez le message\n");
+            readInput(message);
+            sprintf(mess, "SEND? %s %s***", id, message);
+            send(sock, mess, strlen(mess), 0);
+
+            printf("%s\n", receive()); //  [SEND!***] ou [NSEND***]
+        } else {
+            printf("Réessayez\n");
+        }
+    }
 
     close(sock);
     exit(EXIT_SUCCESS);
