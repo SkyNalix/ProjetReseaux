@@ -2,15 +2,21 @@ import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 
-public class Joueur {
+import labyrinthe.Labyrinthe;
+import labyrinthe.Personne;
+
+
+public class Joueur extends Personne {
     private String pseudo;
     private Socket socketAssocie;
     private Partie enJeu;
     private boolean isReady;
     private DatagramSocket port;
-
+    private int score=0;
+    
     public Joueur(String pseudo,Socket socketAssocie,Partie enJeu,boolean isReady,DatagramSocket port){
         //condition des 8 caractères ?
+        super(pseudo);
         this.pseudo = pseudo;
         this.socketAssocie = socketAssocie;
         this.enJeu = enJeu;
@@ -26,15 +32,6 @@ public class Joueur {
         return this.port;
     }
 
-    public void setPort(String nouveau){
-        try{
-            DatagramSocket sock = new DatagramSocket(Integer.parseInt(nouveau));
-            this.port = sock;
-        }catch(Exception e){
-            e.printStackTrace();
-        }
-    }
-
     public Socket getSocket(){
         return this.socketAssocie;
     }
@@ -47,10 +44,6 @@ public class Joueur {
         this.enJeu = nouveau;
     }
 
-    public void setPseudo(String nouveau){
-        this.pseudo = nouveau;
-    }
-
     public boolean getReady(){
         return this.isReady;
     }
@@ -58,6 +51,30 @@ public class Joueur {
     public void setReady(boolean nouveau){
         this.isReady = nouveau;
     }
+
+    public int getScore() {
+        return score;
+    }
+
+    public void setScore(int score) {
+        this.score = score;
+    }
+
+    @Override
+    public boolean isFantome(){
+        return false;
+    }
+
+    public void setPort(String nouveau){
+        try{
+            DatagramSocket sock = new DatagramSocket(Integer.parseInt(nouveau));
+            this.port = sock;
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+
+
 
     public boolean portUnique(String port){
         Serveur.listeJoueur.remove(this);
@@ -135,8 +152,10 @@ public class Joueur {
         ArrayList<Joueur> listeJoueur = new ArrayList<>();
         Partie partie = new Partie(listeJoueur, port, id, false,32,Utilitaire.RandomM(256));
         partie.ajouterJoueur(this);
+        Labyrinthe lab = new Labyrinthe(10, 10,partie.getArrayJoueur());
+        Game g = new Game(partie.getArrayJoueur(),lab,false);
+        partie.setGame(g);
         this.enJeu = partie;
-
         return partie;
     }
 
@@ -166,7 +185,6 @@ public class Joueur {
                 compteur = i;
         }
         if(res.length() != 8 || pseudoUnique(res) == false ){
-            System.out.println("hey !");
             return false;
         }
         this.setPseudo(res);
@@ -177,7 +195,6 @@ public class Joueur {
             compteur = j;
         }
         if(res.length() != 4 || portUnique(res) == false){
-            System.out.println("ho !");
             return false;
         }
         this.setPort(res);    
@@ -188,7 +205,6 @@ public class Joueur {
         }
         int m = Integer.valueOf(res);
         for(int l =0; l < Serveur.listePartie.size();l++){
-            System.out.println(Serveur.listePartie.get(l).getM() );
             if(Serveur.listePartie.get(l).getM() == m){
                 if(Serveur.listePartie.get(l).ajouterJoueur(this)){
                     this.enJeu = Serveur.listePartie.get(l);

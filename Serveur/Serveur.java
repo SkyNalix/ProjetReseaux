@@ -1,6 +1,5 @@
 import java.io.*;
 import java.net.*;
-//import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 public class Serveur implements Runnable{
@@ -9,7 +8,7 @@ public class Serveur implements Runnable{
     public Serveur(Socket socket){
         this.socket = socket;
     }
-
+    
     public static ArrayList<Joueur> listeJoueur = new ArrayList<>();
     public static ArrayList<Partie> listePartie = new ArrayList<>();
 
@@ -46,7 +45,7 @@ public class Serveur implements Runnable{
                         }else{
                             joueur.rejoindrePartie(x);
                             listePartie.add(p);
-                            pw.write("REGOK" + p.getM() + "***");
+                            pw.write("REGOK" + p.getM() + "***");pw.flush();
                         }
                     }else{pw.write("REGNO***"); pw.flush();}
 
@@ -63,26 +62,99 @@ public class Serveur implements Runnable{
                 }else if(x.equals("UNREG***") && !joueur.getReady()){ //UNREG*** quitte la partie 
                     pw.write("UNROK" + " " + joueur.getPartie().getM() + "***"); pw.flush();
                     joueur.getPartie().retirerJoueur(joueur);
+                    if(joueur.getPartie().tousPret()){ // si le joueur était le dernier lance la partie en quittant
+                        System.out.println("tout le monde est prêt");
+                    }
                     joueur.setPartie(null);
                 }else if(x.equals("START***") && joueur.getPartie() != null) { //START*** bloque dans la game,attends le lancement
                     joueur.setReady(true);
+                    System.out.println(joueur.getPseudo() + " est prêt");
                     if(joueur.getPartie().tousPret()){
-                        System.out.println("tout le monde est prêt");
+
+                        joueur.getPartie().setLancer(true);
+                        
+                        pw.write("WELCO " + joueur.getPartie().getM() + " " 
+                        + joueur.getPartie().getGame().lab.getHauteur() + " "
+                        + joueur.getPartie().getGame().lab.getLargeur() + " "  );
+                        pw.flush();    
                     }
+                    
                 }else if(x.startsWith("LIST?") && x.endsWith("***") ){ //LIST? numPartie*** affiche les joueurs de la 
                         joueur.listePartie(x, pw);                      // partie demandé
 
                 }else if(x.startsWith("SEND?") && x.endsWith("***") && joueur.getPartie().getLancer()) {   
                     joueur.chatter(x);
 
-                }else if(x.startsWith("DISC!") && x.endsWith("***") && joueur.getPartie() == null) { // se deconnecte 
+                }else if(x.startsWith("DISC!") && x.endsWith("***") && joueur.getPartie() == null && !joueur.getReady()) { // se deconnecte 
                     listeJoueur.remove(joueur);
                     joueur.getPort().close();
                     joueur.getSocket().close();
                     return ;
+                }else if(x.startsWith("SETPS")&& x.endsWith("***") && !joueur.getReady()){//envie de changer de pseudo
+                        x = x.substring(6, x.length()-3);
+                        if(x.length() != 8 || joueur.pseudoUnique(x) == false){
+                            pw.write("REGNO***");
+                            pw.flush();
+                        }else{joueur.setPseudo(x);} 
                 }else if(x.equals("-1")){//si le joueur a crash
-                        System.out.println(joueur.getPseudo() + " has disconnected");
+                        joueur.getPartie().retirerJoueur(joueur);
+                        joueur.setPartie(null);
+                        System.out.println("|" + joueur.getPseudo() + " has disconnected|");
                         return ;
+                }else if (x.startsWith("SIZE? ") && x.endsWith("***")  && !joueur.getReady()){    
+                        int m = Integer.parseInt(x.substring(6,x.length()-3));
+                        Partie p = null;
+                        for(int i = 0; i < listePartie.size();i++){
+                            if(m == listePartie.get(i).getM())
+                                p  =listePartie.get(i);
+                        }
+                        
+                        if(p == null){pw.write("DUNNONNO***");pw.flush();}else{
+                            pw.write("SIZE! " + p.getM() + " " 
+                            + p.getGame().lab.getHauteur() + " "
+                            + p.getGame().lab.getLargeur());
+                            pw.flush();
+                        }
+
+                }else if(x.startsWith("UPMOV") && x.endsWith("***") && joueur.getPartie() != null && joueur.getPartie().getLancer() ){ //mouvement
+                        joueur.getPartie().getGame().moveUp(joueur, Integer.parseInt(x.substring(6, x.length()-3)));
+                        joueur.getPartie().getGame().posJoueursUpdate();
+                        String v = joueur.getPartie().getGame().lab.print();
+                        pw.write(v); pw.flush();
+                        pw.write("MOVE! " + joueur.getPosition().getX() + " " + joueur.getPosition().getY() ); pw.flush();
+                       
+                }else if(x.startsWith("DOMOV") && x.endsWith("***") && joueur.getPartie() != null && joueur.getPartie().getLancer()){ //mouvement
+                        joueur.getPartie().getGame().moveDown(joueur, Integer.parseInt(x.substring(6, x.length()-3)));
+                        joueur.getPartie().getGame().posJoueursUpdate();
+                        String v = joueur.getPartie().getGame().lab.print();
+                        pw.write(v); pw.flush(); 
+                        pw.write("MOVE! " + joueur.getPosition().getX() + " " + joueur.getPosition().getY() ); pw.flush();
+
+                }else if(x.startsWith("RIMOV") && x.endsWith("***") && joueur.getPartie() != null && joueur.getPartie().getLancer()){ //mouvement
+                        joueur.getPartie().getGame().moveRight(joueur, Integer.parseInt(x.substring(6, x.length()-3)));
+                        joueur.getPartie().getGame().posJoueursUpdate();
+                        String v = joueur.getPartie().getGame().lab.print();
+                        pw.write(v); pw.flush(); 
+                        pw.write("MOVE! " + joueur.getPosition().getX() + " " + joueur.getPosition().getY() ); pw.flush();
+
+                }else if(x.startsWith("LEMOV") && x.endsWith("***") && joueur.getPartie() != null && joueur.getPartie().getLancer()){ //mouvement
+                        joueur.getPartie().getGame().moveLeft(joueur, Integer.parseInt(x.substring(6, x.length()-3)));
+                        joueur.getPartie().getGame().posJoueursUpdate();   
+                        String v = joueur.getPartie().getGame().lab.print();  
+                        pw.write(v); pw.flush();     
+                        pw.write("MOVE! " + joueur.getPosition().getX() + " " + joueur.getPosition().getY() ); pw.flush();                
+                }else if(x.equals("IQUIT***") && joueur.getPartie() != null && joueur.getPartie().getLancer()){    
+                        Partie p = joueur.getPartie();
+                        p.retirerJoueur(joueur);
+                        joueur.setReady(false);
+                        joueur.setPartie(null);
+                        //end game
+                        if(p.getNbJoueur() == 0){
+                            p.getGame().commandControl.stop();
+                            p.getGame().fantomeMove.stop();
+                        }
+                        pw.write("GOBYE***");
+                        pw.flush();
                 }else{
                     pw.write("DUNNO***");  pw.flush();
                 }
@@ -100,10 +172,10 @@ public class Serveur implements Runnable{
             Joueur j2 = new Joueur("Aypierre",null,null,false,new DatagramSocket(4243));
             Joueur j3 = new Joueur("Zelenski",null,null,false,new DatagramSocket(4244));
             ArrayList<Joueur> p2 = new ArrayList<>();
-            
+            ArrayList<Joueur> p1 = new ArrayList<>();
     
-            Partie test1 = new Partie(listeJoueur, "4000", "Vladimir", false, 2,32);
-            Partie test2 = new Partie(p2, "4242", "Zelenski", false, 2,32);
+            Partie test1 = new Partie(p1, "4000", "Vladimir", false,32,0);
+            Partie test2 = new Partie(p2, "4242", "Zelenski", false, 32,1);
             test1.ajouterJoueur(j1); test1.ajouterJoueur(j2); 
             test2.ajouterJoueur(j3);
             listePartie.add(test1);
@@ -116,7 +188,9 @@ public class Serveur implements Runnable{
                 Socket socket = servSocket.accept();
                 Serveur serv = new Serveur(socket);
                 Thread t = new Thread(serv);
-                t.start();
+                synchronized(t){
+                    t.start();
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();

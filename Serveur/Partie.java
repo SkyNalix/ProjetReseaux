@@ -1,6 +1,10 @@
+
 import java.io.*;
 //import java.net.*;
+
 import java.util.ArrayList;
+
+import labyrinthe.Labyrinthe;
 
 public class Partie {
 
@@ -12,6 +16,7 @@ public class Partie {
     private int m;
     //private String mdp on fait des parties avec mdp en option ??
     //Joueur chef de Partie
+    private Game game;
     
     public Partie(ArrayList<Joueur> listeJoueur,String port,String id,boolean lancer,int maxJoueur,int m){
         this.listeJoueur = listeJoueur;
@@ -20,6 +25,22 @@ public class Partie {
         this.lancer = lancer;
         this.maxJoueur = maxJoueur;
         this.m = m;
+    }
+
+    public Joueur[] getArrayJoueur(){
+        Joueur[] a = new Joueur[this.listeJoueur.size()];
+        for(int i =0; i < this.listeJoueur.size();i++){
+            a[i] = this.listeJoueur.get(i);
+        }
+        return a;
+    }
+
+    public void setGame(Game nouveau){
+        this.game = nouveau;
+    }
+
+    public Game getGame(){
+        return this.game;
     }
 
     public int getNbJoueur(){
@@ -66,8 +87,12 @@ public class Partie {
         this.maxJoueur = nouveau;
     }
 
+    public ArrayList<Joueur> getListeJoueur(){
+        return this.listeJoueur;
+    }
+
     public boolean ajouterJoueur(Joueur nouveau){
-        if(this.listeJoueur.contains(nouveau) == false && this.getNbJoueur() < this.getMaxJoueur()){
+        if(this.listeJoueur.contains(nouveau) == false && this.getNbJoueur() < this.getMaxJoueur() && !this.lancer){
             this.listeJoueur.add(nouveau);
             return true;
         }else{
@@ -77,7 +102,10 @@ public class Partie {
 
     public boolean tousPret(){
         for(int i =0; i < this.listeJoueur.size();i++){
-            if(this.listeJoueur.get(i).getReady() == false){return false;}
+            if(this.listeJoueur.get(i).getReady() == false){
+                System.out.println(this.listeJoueur.get(i).getPseudo() + " is not ready yet"); 
+                return false;
+            }
         }
         return true;
     }
@@ -102,7 +130,7 @@ public class Partie {
             for(int i = 0; i < liste.size(); i++ ){
                 if(liste.get(i).lancer == false && liste.get(i).getNbJoueur() > 0){
                     PrintWriter pw = new PrintWriter(x.getSocket().getOutputStream());
-                    pw.write("OGAME " + liste.get(i).getID() + " " + liste.get(i).getM() + liste.get(i).getNbJoueur() + "***" );
+                    pw.write("OGAME " + liste.get(i).getID() + " " + liste.get(i).getM() + " "+ liste.get(i).getNbJoueur() + "***" );
                     pw.flush();
                 }
 
