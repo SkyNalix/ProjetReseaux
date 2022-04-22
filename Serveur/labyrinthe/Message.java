@@ -3,8 +3,7 @@ package labyrinthe;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
-
-import Pasgit.Joueur;
+ 
 
 public class Message {
     public static void send(Joueur j,Position pos,int score){
