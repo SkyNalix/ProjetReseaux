@@ -1,10 +1,12 @@
+package serveur;
+
 import java.io.BufferedReader;
 import java.util.Random;
 
 public class Utilitaire {
 
     public static int RandomM(int max){
-        Random a = new Random(); 
+        Random a = new Random();
         int m = a.nextInt(max);
         for(int i =0; i < Serveur.listePartie.size();i++){
             if(Serveur.listePartie.get(i).getM() == m){
@@ -24,9 +26,9 @@ public class Utilitaire {
             StringBuilder data = new StringBuilder(charsIn);
             data.append(buffer, 0, charsIn);
             return composition(data.toString());
-            
+
         } catch (Exception e) {
-           e.printStackTrace();
+            e.printStackTrace();
         }
         return "";
     }
@@ -51,13 +53,13 @@ public class Utilitaire {
             System.out.println(data.toString());
             return data.toString();
         } catch (Exception e) {
-           // e.printStackTrace();
+            // e.printStackTrace();
         }
         return "";
     }
 
     public static int randomPort(){
-        Random a = new Random(); 
+        Random a = new Random();
         int m = 4000 + a.nextInt(1000);
         for(int i =0; i < Serveur.listePartie.size();i++){
             if(Serveur.listePartie.get(i).getM() == m){
@@ -66,5 +68,5 @@ public class Utilitaire {
         }
         return m;
     }
-    
+
 }

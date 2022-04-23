@@ -1,4 +1,4 @@
-package labyrinthe;
+package serveur.labyrinthe;
 public class Position {
     private int x;
     private int y;

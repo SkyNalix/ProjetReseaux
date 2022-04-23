@@ -1,4 +1,4 @@
-package gui;
+package serveur.gui;
 
 import java.awt.*;
 import java.net.Socket;
