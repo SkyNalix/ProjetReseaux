@@ -14,7 +14,6 @@ public class Serveur implements Runnable {
 
 	public static ArrayList<Partie> listePartie = new ArrayList<>();
 
-
 	@Override
 	public void run() {
 		try {
