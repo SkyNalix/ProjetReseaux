@@ -19,7 +19,7 @@ import serveur.Joueur;
 public class Labyrinthe {
 
     Random random;
-    private Joueur[] joueurs;
+    private ArrayList<Joueur> joueurs;
     private Fantome[] fantomes;
     private int hauteur, largeur;
     public int[][] labyrinthe;
@@ -37,7 +37,7 @@ public class Labyrinthe {
     }
 
     @SuppressWarnings( "unchecked" )
-    public Labyrinthe( int hauteur, int largeur, Joueur[] joueurs ) {
+    public Labyrinthe( int hauteur, int largeur, ArrayList<Joueur> joueurs ) {
         this( hauteur, largeur );
         this.joueurs = joueurs;
         //TODO mettre a jour posJoueurNbr dans setBorder()
@@ -155,7 +155,7 @@ public class Labyrinthe {
         }
         j.setPosition( pos );
         this.labyrinthe[pos.getX()][pos.getY()] = 3;
-        //message replit client
+        //message replit Client
         return pos;
     }
 
@@ -218,6 +218,10 @@ public class Labyrinthe {
                 currentPos = stack.pop();
             }
         }
+    }
+
+    public int getNbFantomes() {
+        return this.fantomes.length;
     }
 
     /**
@@ -298,7 +302,7 @@ public class Labyrinthe {
         }
     }
 
-    public synchronized void initPosJoueur( Joueur[] joueurs ) {
+    public synchronized void initPosJoueur( ArrayList<Joueur> joueurs ) {
         for( Joueur j : joueurs ) {
             int rand = random.nextInt( this.path.size() );
             j.setPosition( this.path.get( rand ) );
@@ -350,7 +354,7 @@ public class Labyrinthe {
     }
 
     public void initPosFantome() {
-        this.fantomes = new Fantome[joueurs.length];
+        this.fantomes = new Fantome[joueurs.size()];
         for( int i = 0; i < fantomes.length; i++ ) {
             int index = random.nextInt( this.path.size() );
             fantomes[i] = new Fantome();
