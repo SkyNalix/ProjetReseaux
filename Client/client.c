@@ -219,7 +219,7 @@ uint8_t prePartieStart() {
             send(sock, mess, strlen(mess), 0);
             tmp = receive();
             if (strcmp(tmp, "DUNNO") != 0) {
-                getGamesList(receive()); // [GAMES␣n***]
+                getGamesList(tmp); // [GAMES␣n***]
             }
         } else {
             printf("Réessayez\n");

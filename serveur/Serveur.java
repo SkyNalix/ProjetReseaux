@@ -21,7 +21,7 @@ public class Serveur implements Runnable {
 			BufferedReader br = new BufferedReader( new InputStreamReader( this.socket.getInputStream() ) );
 			PrintWriter pw = new PrintWriter( this.socket.getOutputStream() );
 			//envoie des listes de partie
-			pw.write( "GAMES " + Partie.getNbPartie( listePartie ) + "***" );
+			pw.write( "GAMES " + Partie.getNbPartie() + "***" );
 			pw.flush();
 			//envoie liste partie avec id
 			Partie.envoyerListePartie( pw, listePartie );
@@ -37,7 +37,7 @@ public class Serveur implements Runnable {
 				System.out.println( "|" + x + "|" );
 
 				if( x.equals( "GAME?***" ) ) { //GAMES*** affiche le nb de partie non lancé
-					pw.write( "GAMES " + Partie.getNbPartie( listePartie ) + "***" ); pw.flush();
+					pw.write( "GAMES " + Partie.getNbPartie() + "***" ); pw.flush();
 					Partie.envoyerListePartie( pw, listePartie );
 				} else if( x.startsWith( "NEWPL" ) && x.endsWith( "***" ) ) {
 					if( joueur != null ) {

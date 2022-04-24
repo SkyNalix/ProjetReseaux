@@ -164,9 +164,9 @@ public class Partie {
 		}
 	}
 
-	public static String getNbPartie( ArrayList<Partie> liste ) {
+	public static String getNbPartie() {
 		int nb = 0;
-		for( Partie partie : liste ) {
+		for( Partie partie : Serveur.listePartie ) {
 			if( !partie.lancer && partie.getNbJoueur() > 0 )
 				nb++;
 		}
