@@ -104,8 +104,8 @@ public class Joueur extends Personne {
 		Joueur joueur = new Joueur( id, socket, port );
 		Partie partie = new Partie( 32 );
 		partie.ajouterJoueur( joueur );
-		Labyrinthe lab = new Labyrinthe( 10, 10, partie.getListeJoueur() );
-		Game g = new Game( partie.getListeJoueur(), lab, false );
+		Labyrinthe lab = new Labyrinthe( 10, 10, partie.getArrayJoueur() );
+		Game g = new Game( lab, false );
 		partie.setGame( g );
 		joueur.partie = partie;
 		return joueur;

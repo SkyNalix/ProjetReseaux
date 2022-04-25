@@ -138,30 +138,34 @@ public class Partie {
 	}
 
 	public void launchGame() {
-		lancer = true;
-		game = new Game( listeJoueur, new Labyrinthe( 10, 10, listeJoueur ), true );
-		String s = String.format( "WELCO %d %d %d %d %s %d***",
-								  getID(),
-								  getGame().lab.getHauteur(),
-								  getGame().lab.getLargeur(),
-								  getGame().lab.getNbFantomes(),
-								  address.getHostName() + "#".repeat( 15 - address.getHostName().length() ),
-								  address.getPort() );
-		for( Joueur joueur : listeJoueur ) {
-			try {
-				PrintWriter pw = new PrintWriter( joueur.getSocket().getOutputStream() );
-				pw.write( s );
-				pw.flush();
-				String str_x = joueur.getPosition().getX() + "";
-				str_x = "0".repeat( 3 - str_x.length() ) + str_x;
-				String str_y = joueur.getPosition().getY() + "";
-				str_y = "0".repeat( 3 - str_y.length() ) + str_y;
-				pw.write( String.format( "POSIT %s %s %s***", joueur.getPseudo(), str_x, str_y ) );
-				pw.flush();
-			} catch( Exception e ) {
-				e.printStackTrace();
+		new Thread(()->{
+			lancer = true;
+			game = new Game(new Labyrinthe( 10, 10, getArrayJoueur() ), true );
+
+			String s = String.format( "WELCO %d %d %d %d %s %d***",
+					getID(),
+					getGame().lab.getHauteur(),
+					getGame().lab.getLargeur(),
+					getGame().lab.getNbFantomes(),
+					address.getHostName() + "#".repeat( 15 - address.getHostName().length() ),
+					address.getPort() );
+			for( Joueur joueur : listeJoueur ) {
+				try {
+					PrintWriter pw = new PrintWriter( joueur.getSocket().getOutputStream() );
+					pw.write( s );
+					pw.flush();
+					String str_x = joueur.getPosition().getX() + "";
+					str_x = "0".repeat( 3 - str_x.length() ) + str_x;
+					String str_y = joueur.getPosition().getY() + "";
+					str_y = "0".repeat( 3 - str_y.length() ) + str_y;
+					pw.write( String.format( "POSIT %s %s %s***", joueur.getPseudo(), str_x, str_y ) );
+					pw.flush();
+				} catch( Exception e ) {
+					e.printStackTrace();
+				}
 			}
-		}
+		}).start();
+
 	}
 
 	public static String getNbPartie() {
