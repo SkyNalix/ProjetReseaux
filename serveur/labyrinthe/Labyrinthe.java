@@ -37,14 +37,12 @@ public class Labyrinthe {
     public Labyrinthe(int hauteur,int largeur,Joueur[] joueurs){
         this(hauteur,largeur);
         this.joueurs=joueurs;
-        //TODO mettre a jour posJoueurNbr dans setBorder()
         this.posJoueurNbr=new ArrayDeque[hauteur][largeur];
         init(false);
     }
 
     //dep
     //TODO au lieux de retourne une position, on envoie directement la commande au socket
-    //TODO cas renconctre fantome
     public synchronized Position moveUp(Joueur j,int pas){
         boolean scoreChange=false;
         Position pos=j.getPosition();
@@ -65,12 +63,14 @@ public class Labyrinthe {
             }
             pos.setX(pos.getX()-1);
         }
+
         j.setPosition(pos);
         if(scoreChange){//TODO
             //Message.send(j,pos,myScore);
         }else {
             //Message.send(j,pos,-1);
         }
+        print();
         return pos;
     }
     public synchronized Position moveRight(Joueur j,int pas){
@@ -97,6 +97,7 @@ public class Labyrinthe {
         this.labyrinthe[pos.getX()][pos.getY()]=3;
         j.setPosition(pos);
         //TODO
+        print();
         return pos;
     }
     public synchronized Position moveLeft(Joueur j,int pas){
@@ -123,6 +124,7 @@ public class Labyrinthe {
 
         j.setPosition(pos);
         this.labyrinthe[pos.getX()][pos.getY()]=3;
+        print();
         return pos;
     }
     public synchronized Position moveDown(Joueur j,int pas){
@@ -150,6 +152,7 @@ public class Labyrinthe {
         j.setPosition(pos);
         this.labyrinthe[pos.getX()][pos.getY()]=3;
         //message replit client
+        print();
         return pos;
     }
 

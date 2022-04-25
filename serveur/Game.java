@@ -26,7 +26,6 @@ public class Game {
 		this.lab=lab;
 		if(gui) {
 			this.display=new Display(this.lab.getLabyrinthe());
-
 		}
 		fantomeMove.start();
 		//commandControl.start();
@@ -82,20 +81,15 @@ public class Game {
 
 	Thread fantomeMove=new Thread(()->{
 		boolean go=true;
-		while(go) {
-			System.out.println("THREAD IN PROCECING");
-
-            try {
-                sleep(2000);
-            } catch (InterruptedException e) {
-
-            }
+		while(go&&display.isInGame()) {
 			go=this.lab.fantomeMove();
-			System.out.println("block Test7");
 			if(gui){
 				display.updateContent(this.lab.getLabyrinthe());
 			}
-			System.out.println("block Test8");
+			try {
+				sleep(2000);
+			} catch (InterruptedException e) {
+			}
 		}
 
 	});

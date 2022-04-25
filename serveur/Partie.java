@@ -141,6 +141,7 @@ public class Partie {
 		new Thread(()->{
 			lancer = true;
 			game = new Game(new Labyrinthe( 10, 10, getArrayJoueur() ), true );
+
 			String s = String.format( "WELCO %d %d %d %d %s %d***",
 					getID(),
 					getGame().lab.getHauteur(),

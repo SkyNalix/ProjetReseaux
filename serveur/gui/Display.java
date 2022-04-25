@@ -13,15 +13,18 @@ public class Display extends JFrame{
 	int[][] lab;
 	int hauteur;
 	int largeur;
+	private boolean inGame;
 	public Display(int[][] lab) {
 		super("Display");
 		this.lab=lab;
 		this.hauteur=lab.length;
 		this.largeur=lab[0].length;
+		inGame=true;
 		//setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		WindowListener l = new WindowAdapter() {
 			public void windowClosing(WindowEvent e){
-				System.exit(0);
+				inGame=false;
+				dispose();
 			}
 		};
 		addWindowListener(l);
@@ -29,6 +32,7 @@ public class Display extends JFrame{
 		setContentPane(panneau);
 		setSize(1000,1000);
 		setVisible(true);
+		updateContent(lab);
 	}
 
 	public void panneauInit() {
@@ -42,7 +46,6 @@ public class Display extends JFrame{
 		}
 	}
 
-	//TODO ajoute boutton map dans pannel et mettre ajoue uniqueme le couleur de button
 	public void paintPanel() {
 		for(int i=0;i<hauteur;i++){
 			for(int j=0;j<largeur;j++){
@@ -66,11 +69,13 @@ public class Display extends JFrame{
 		}
 	}
 
+	public boolean isInGame(){
+		return this.inGame;
+	}
+
 	//grapiqueF
-	public void updateContent(int[][] lab) {//TODO à finaliser
+	public void updateContent(int[][] lab) {
 		this.lab=lab;
 		paintPanel();
-		//this.revalidate();
-		System.out.println("block Test11");
 	}
 }
