@@ -42,18 +42,16 @@ public class Labyrinthe {
     }
 
     //dep
-    //TODO au lieux de retourne une position, on envoie directement la commande au socket
-    public synchronized Position moveUp(Joueur j,int pas){
-        boolean scoreChange=false;
-        Position pos=j.getPosition();
-        for(int i=0;i<pas;i++){
-            if(this.labyrinthe[pos.getX()-1][pos.getY()]==1||this.labyrinthe[pos.getX()-1][pos.getY()]==-1){
+    //TODO cas renconctre fantome
+    public synchronized Position moveUp( Joueur j, int pas ) {
+        Position pos = j.getPosition();
+        for( int i = 0; i < pas; i++ ) {
+            if( this.labyrinthe[pos.getX() - 1][pos.getY()] == 1 || this.labyrinthe[pos.getX() - 1][pos.getY()] == -1 ) {
                 break;
-            }else{
-                if(this.labyrinthe[pos.getX()-1][pos.getY()]==2){
-                    scoreChange=true;
-                    elimineFantome(new Position(pos.getX()-1,pos.getY()));
-                    j.setScore(j.getScore()+1);
+            } else {
+                if( this.labyrinthe[pos.getX() - 1][pos.getY()] == 2 ) {
+                    elimineFantome( new Position( pos.getX() - 1, pos.getY() ) );
+                    j.setScore( j.getScore() + 1 );
                 }
                 this.posJoueurNbr[pos.getX()][pos.getY()].pop();
                 if (this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty()) {
@@ -63,27 +61,20 @@ public class Labyrinthe {
             }
             pos.setX(pos.getX()-1);
         }
-
         j.setPosition(pos);
-        if(scoreChange){//TODO
-            //Message.send(j,pos,myScore);
-        }else {
-            //Message.send(j,pos,-1);
-        }
         print();
         return pos;
     }
-    public synchronized Position moveRight(Joueur j,int pas){
-        Position pos=j.getPosition();
-        boolean scoreChange=false;
-        for(int i=0;i<pas;i++){
-            if(this.labyrinthe[pos.getX()][pos.getY()+1]==1||this.labyrinthe[pos.getX()][pos.getY()+1]==-1){
+
+    public synchronized Position moveRight( Joueur j, int pas ) {
+        Position pos = j.getPosition();
+        for( int i = 0; i < pas; i++ ) {
+            if( this.labyrinthe[pos.getX()][pos.getY() + 1] == 1 || this.labyrinthe[pos.getX()][pos.getY() + 1] == -1 ) {
                 break;
-            }else{
-                if(this.labyrinthe[pos.getX()][pos.getY()+1]==2){
-                    j.setScore(j.getScore()+1);
-                    scoreChange=true;
-                    elimineFantome(new Position(pos.getX(),pos.getY()+1));
+            } else {
+                if( this.labyrinthe[pos.getX()][pos.getY() + 1] == 2 ) {
+                    j.setScore( j.getScore() + 1 );
+                    elimineFantome( new Position( pos.getX(), pos.getY() + 1 ) );
                 }
                 this.posJoueurNbr[pos.getX()][pos.getY()].pop();
                 if(this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty()){
@@ -94,24 +85,22 @@ public class Labyrinthe {
             }
             pos.setY(pos.getY()+1);
         }
-        this.labyrinthe[pos.getX()][pos.getY()]=3;
-        j.setPosition(pos);
-        //TODO
+        this.labyrinthe[pos.getX()][pos.getY()] = 3;
+        j.setPosition( pos );
         print();
         return pos;
     }
-    public synchronized Position moveLeft(Joueur j,int pas){
-        boolean scoreChange=false;
-        Position pos=j.getPosition();
-        for(int i=0;i<pas;i++){
-            if(this.labyrinthe[pos.getX()][pos.getY()-1]==1||this.labyrinthe[pos.getX()][pos.getY()-1]==-1){
+
+    public synchronized Position moveLeft( Joueur j, int pas ) {
+        Position pos = j.getPosition();
+        for( int i = 0; i < pas; i++ ) {
+            if( this.labyrinthe[pos.getX()][pos.getY() - 1] == 1 || this.labyrinthe[pos.getX()][pos.getY() - 1] == -1 ) {
                 break;
             }else{
                 if(this.labyrinthe[pos.getX()][pos.getY()-1]==2){
                     //TODO effacce fantome
-                    j.setScore(j.getScore()+1);
-                    scoreChange=true;
-                    elimineFantome(new Position(pos.getX(),pos.getY()-1));
+                    j.setScore( j.getScore() + 1 );
+                    elimineFantome( new Position( pos.getX(), pos.getY() - 1 ) );
                 }
                 this.posJoueurNbr[pos.getX()][pos.getY()].pop();
                 if(this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty()){
@@ -127,18 +116,17 @@ public class Labyrinthe {
         print();
         return pos;
     }
-    public synchronized Position moveDown(Joueur j,int pas){
-        boolean scoreChange=false;
-        Position pos=j.getPosition();
-        for(int i=0;i<pas;i++){
-            if(this.labyrinthe[pos.getX()+1][pos.getY()]==1||this.labyrinthe[pos.getX()+1][pos.getY()]==-1){
+  
+    public synchronized Position moveDown( Joueur j, int pas ) {
+        Position pos = j.getPosition();
+        for( int i = 0; i < pas; i++ ) {
+            if( this.labyrinthe[pos.getX() + 1][pos.getY()] == 1 || this.labyrinthe[pos.getX() + 1][pos.getY()] == -1 ) {
                 break;
             }else{
                 if(this.labyrinthe[pos.getX()+1][pos.getY()]==2){
                     //TODO efface fantome
-                    j.setScore(j.getScore()+1);
-                    scoreChange=true;
-                    elimineFantome(new Position(pos.getX()+1,pos.getY()));
+                    j.setScore( j.getScore() + 1 );
+                    elimineFantome( new Position( pos.getX() + 1, pos.getY() ) );
                 }
                 this.posJoueurNbr[pos.getX()][pos.getY()].pop();
                 if(this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty()){
@@ -151,7 +139,6 @@ public class Labyrinthe {
         }
         j.setPosition(pos);
         this.labyrinthe[pos.getX()][pos.getY()]=3;
-        //message replit client
         print();
         return pos;
     }

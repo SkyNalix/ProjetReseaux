@@ -158,16 +158,18 @@ uint8_t prePartieStart() {
             tmp = receive();
             if (strcmp(tmp, "DUNNO") == 0) {
                 printf("DUNNO\n");
-            } else if (strcmp(tab[0], "WELCO") == 0) { // [WELCO␣m␣h␣w␣f␣ip␣port***]
+            } else {
                 splitString(tmp, &tab);
-                uint8_t m = strtoul(tab[1], NULL, 16);
-                uint16_t h = littleEndian16ToHost(strtoul(tab[2], NULL, 16));
-                uint16_t w = littleEndian16ToHost(strtoul(tab[3], NULL, 16));
-                uint8_t f = strtoul(tab[4], NULL, 16);
-                printf("WELCO %d %d %d %d %s %s\n", m, h, w, f, tab[5], tab[6]);
-                splitString(receive(), &tab);
-                printf("POSIT %s %s %s\n", tab[1], tab[2], tab[3]);
-                return id_partie;
+                if (strcmp(tab[0], "WELCO") == 0) { // [WELCO␣m␣h␣w␣f␣ip␣port***]
+                    uint8_t m = strtoul(tab[1], NULL, 16);
+                    uint16_t h = littleEndian16ToHost(strtoul(tab[2], NULL, 16));
+                    uint16_t w = littleEndian16ToHost(strtoul(tab[3], NULL, 16));
+                    uint8_t f = strtoul(tab[4], NULL, 16);
+                    printf("WELCO %d %d %d %d %s %s\n", m, h, w, f, tab[5], tab[6]);
+                    splitString(receive(), &tab);
+                    printf("POSIT %s %s %s\n", tab[1], tab[2], tab[3]);
+                    return id_partie;
+                }
             }
         } else if (strcmp(buff, "UNREG") == 0) { // [UNREG***]
             strcpy(mess, "UNREG***");
@@ -295,6 +297,7 @@ int main(int argc, char **argv) {
             for (int i = 0; i < 3 - ((int) strlen(d)); i++) {
                 strcat(mess, "0");
             }
+            strcat(mess, d);
             strcat(mess, "***");
             send(sock, mess, strlen(mess), 0);
 
@@ -302,7 +305,7 @@ int main(int argc, char **argv) {
             if (strcmp(tab[0], "MOVE!") == 0) { // [MOVE!␣x␣y***]
                 printf("MOVE! %s %s\n", tab[1], tab[2]);
             } else if (strcmp(tab[0], "MOVEF") == 0) { // [MOVEF␣x␣y␣p***]
-                printf("MOVE! %s %s %s\n", tab[1], tab[2], tab[3]);
+                printf("MOVEF %s %s %s\n", tab[1], tab[2], tab[3]);
             } else {
                 printf("[ERROR] DUNNO\n");
             }
