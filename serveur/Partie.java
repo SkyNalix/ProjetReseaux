@@ -1,158 +1,214 @@
 package serveur;
 
-import java.io.*;
-//import java.net.*;
+import serveur.labyrinthe.Labyrinthe;
 
+import java.io.*;
+
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 
 public class Partie {
 
-    private ArrayList<Joueur> listeJoueur;
-    private int maxJoueur;
-    private String port;
-    private String id;
-    private boolean lancer;
-    private int m;
-    //private String mdp on fait des parties avec mdp en option ??
-    //Joueur chef de Partie
-    private Game game;
 
-    public Partie( ArrayList<Joueur> listeJoueur, String port, String id, boolean lancer, int maxJoueur, int m ) {
-        this.listeJoueur = listeJoueur;
-        this.id = id;
-        this.port = port;
-        this.lancer = lancer;
-        this.maxJoueur = maxJoueur;
-        this.m = m;
-    }
+	private final int id;
+	private final InetSocketAddress address; // ip et port multicast
+	private final ArrayList<Joueur> listeJoueur = new ArrayList<>();
+	private int maxJoueur;
+	private boolean lancer = false;
+	private Game game;
 
-    public Joueur[] getArrayJoueur() {
-        Joueur[] a = new Joueur[this.listeJoueur.size()];
-        for( int i = 0; i < this.listeJoueur.size(); i++ ) {
-            a[i] = this.listeJoueur.get( i );
-        }
-        return a;
-    }
+	public Partie() {
+		this( Integer.MAX_VALUE );
+	}
 
-    public void setGame( Game nouveau ) {
-        this.game = nouveau;
-    }
+	public Partie( int maxJoueur ) {
+		this.maxJoueur = maxJoueur;
+		int id = 0;
+		while( true ) { // cherche un id de partie qui n'est pas pris
+			boolean found = false;
+			for( Partie partie : Serveur.listePartie )
+				if( partie.getID() == id ) {
+					id++;
+				}
+			if( !found ) break;
+			id++;
+		}
+		this.id = id;
+		int port = 5144;
+		while( true ) { // cherche un port qui n'est pas pris
+			boolean found = false;
+			for( Partie partie : Serveur.listePartie )
+				if( partie.getID() == port ) {
+					port++;
+				}
+			if( !found ) break;
+			port++;
+		}
+		address = new InetSocketAddress( "224.42.51.44", port );
+		Serveur.listePartie.add( this );
+	}
 
-    public Game getGame() {
-        return this.game;
-    }
+	public Joueur[] getArrayJoueur() {
+		Joueur[] a = new Joueur[this.listeJoueur.size()];
+		for( int i = 0; i < this.listeJoueur.size(); i++ ) {
+			a[i] = this.listeJoueur.get( i );
+		}
+		return a;
+	}
 
-    public int getNbJoueur() {
-        return this.listeJoueur.size();
-    }
+	public void setGame( Game nouveau ) {
+		this.game = nouveau;
+	}
 
-    public boolean getLancer() {
-        return this.lancer;
-    }
+	public Game getGame() {
+		return this.game;
+	}
 
-    public int getM() {
-        return this.m;
-    }
+	public int getNbJoueur() {
+		return this.listeJoueur.size();
+	}
 
-    public int getMaxJoueur() {
-        return this.maxJoueur;
-    }
+	public boolean getLancer() {
+		return this.lancer;
+	}
 
-    public String getPort() {
-        return this.port;
-    }
+	public int getMaxJoueur() {
+		return this.maxJoueur;
+	}
 
-    public String getID() {
-        return this.id;
-    }
+	public int getID() {
+		return this.id;
+	}
 
-    public void setPort( String nouveau ) {
-        this.port = nouveau;
-    }
+	public void setLancer( boolean nouveau ) {
+		this.lancer = nouveau;
+	}
 
-    public void setM( int nouveau ) {
-        this.m = nouveau;
-    }
+	public void setMaxJoueur( int nouveau ) {
+		this.maxJoueur = nouveau;
+	}
 
-    public void setID( String nouveau ) {
-        this.id = nouveau;
-    }
+	public ArrayList<Joueur> getListeJoueur() {
+		return this.listeJoueur;
+	}
 
-    public void setLancer( boolean nouveau ) {
-        this.lancer = nouveau;
-    }
+	public boolean ajouterJoueur( Joueur nouveau ) {
+		if( this.getNbJoueur() == this.getMaxJoueur() || this.lancer )
+			return false;
+		for( Joueur joueur : this.listeJoueur ) {
+			if( joueur.getPseudo().equals( nouveau.getPseudo() ) )
+				return false;
+		}
+		this.listeJoueur.add( nouveau );
+		return true;
+	}
 
-    public void setMaxJoueur( int nouveau ) {
-        this.maxJoueur = nouveau;
-    }
+	public boolean tousPret() {
+		for( Joueur joueur : this.listeJoueur ) {
+			if( !joueur.getReady() ) {
+				System.out.println( joueur.getPseudo() + " is not ready yet" );
+				return false;
+			}
+		}
+		return true;
+	}
 
-    public ArrayList<Joueur> getListeJoueur() {
-        return this.listeJoueur;
-    }
+	public void retirerJoueur( Joueur supr ) {
+		if( this.listeJoueur.contains( supr ) ) {
+			this.listeJoueur.remove( supr );
+			if( getNbJoueur() == 0 )
+				Serveur.listePartie.remove( this );
+			else if( !lancer && tousPret() ) {
+				launchGame();
+				System.out.println( "tout le monde est prêt" );
+			}
+		} else {
+			System.out.println( "Joueur absent" );
+		}
+	}
 
-    public boolean ajouterJoueur( Joueur nouveau ) {
-        if( this.listeJoueur.contains( nouveau ) == false && this.getNbJoueur() < this.getMaxJoueur() && !this.lancer ) {
-            this.listeJoueur.add( nouveau );
-            return true;
-        } else {
-            return false;
-        }
-    }
+	public void listePartie( PrintWriter pw ) {
+		pw.write( "LIST! " + this.getID() + " " + this.listeJoueur.size() + "***" );
+		for( Joueur joueur : this.listeJoueur ) {
+			pw.write( "PLAYR " + joueur.getPseudo() + "***" );
+			pw.flush();
+		}
+	}
 
-    public boolean tousPret() {
-        for( int i = 0; i < this.listeJoueur.size(); i++ ) {
-            if( this.listeJoueur.get( i ).getReady() == false ) {
-                System.out.println( this.listeJoueur.get( i ).getPseudo() + " is not ready yet" );
-                return false;
-            }
-        }
-        return true;
-    }
+	public void launchGame() {
+		lancer = true;
+		game = new Game( listeJoueur, new Labyrinthe( 10, 10, listeJoueur ), true );
+		String s = String.format( "WELCO %d %d %d %d %s %d***",
+								  getID(),
+								  getGame().lab.getHauteur(),
+								  getGame().lab.getLargeur(),
+								  getGame().lab.getNbFantomes(),
+								  address.getHostName() + "#".repeat( 15 - address.getHostName().length() ),
+								  address.getPort() );
+		for( Joueur joueur : listeJoueur ) {
+			try {
+				PrintWriter pw = new PrintWriter( joueur.getSocket().getOutputStream() );
+				pw.write( s );
+				pw.flush();
+				String str_x = joueur.getPosition().getX() + "";
+				str_x = "0".repeat( 3 - str_x.length() ) + str_x;
+				String str_y = joueur.getPosition().getY() + "";
+				str_y = "0".repeat( 3 - str_y.length() ) + str_y;
+				pw.write( String.format( "POSIT %s %s %s***", joueur.getPseudo(), str_x, str_y ) );
+				pw.flush();
+			} catch( Exception e ) {
+				e.printStackTrace();
+			}
+		}
+	}
 
-    public void retirerJoueur( Joueur supr ) {
-        if( this.listeJoueur.contains( supr ) ) {
-            this.listeJoueur.remove( supr );
-        } else {
-            System.out.println( "Joueur absent" );
-        }
-    }
+	public static String getNbPartie() {
+		int nb = 0;
+		for( Partie partie : Serveur.listePartie ) {
+			if( !partie.lancer && partie.getNbJoueur() > 0 )
+				nb++;
+		}
+		return String.valueOf( nb );
+	}
 
-    public static String getNbPartie( ArrayList<Partie> liste ) {
-        int nb = 0;
-        for( int i = 0; i < liste.size(); i++ ) {
-            if( liste.get( i ).lancer == false && liste.get( i ).getNbJoueur() > 0 )
-                nb++;
-        }
-        return String.valueOf( nb );
-    }
+	public static void envoyerListePartie( PrintWriter pw, ArrayList<Partie> liste ) {
+		try {
+			for( Partie partie : liste ) {
+				if( !partie.lancer && partie.getNbJoueur() > 0 ) {
+					pw.write( "OGAME " + partie.getID() + " " + partie.getNbJoueur() + "***" );
+					pw.flush();
+				}
+			}
+		} catch( Exception e ) {
+			e.printStackTrace();
+		}
+	}
 
-    public static void envoyerListePartie( Joueur x, ArrayList<Partie> liste ) {
-        try {
-            for( int i = 0; i < liste.size(); i++ ) {
-                if( liste.get( i ).lancer == false && liste.get( i ).getNbJoueur() > 0 ) {
-                    PrintWriter pw = new PrintWriter( x.getSocket().getOutputStream() );
-                    pw.write( "OGAME " + liste.get( i ).getID() + " " + liste.get( i ).getM() + " " + liste.get( i ).getNbJoueur() + "***" );
-                    pw.flush();
-                }
+	public static void listePartie( String x, PrintWriter pw ) {
+		String id_str = Utils.splitString( x )[1];
+		int id;
+		try {
+			id = Integer.parseInt( id_str );
+		} catch( Exception e ) {
+			pw.write( "DUNNO***" ); pw.flush();
+			return;
+		}
+		System.out.println( "###### " + id );
+		for( Partie partie : Serveur.listePartie ) {
+			if( partie.getID() == id ) {
+				System.out.println( "found partie" );
+				partie.listePartie( pw );
+				return;
+			}
+		}
+		pw.write( "DUNNO***" ); pw.flush();
+	}
 
-            }
-        } catch( Exception e ) {
-            e.printStackTrace();
-        }
-    }
 
-    public void listePartie( PrintWriter pw ) {
-        pw.write( "LIST! " + this.getM() + " " + this.listeJoueur.size() + "***" );
-        for( int i = 0; i < this.listeJoueur.size(); i++ ) {
-            pw.write( "PLAYR " + this.listeJoueur.get( i ).getPseudo() + "***" );
-            pw.flush();
-        }
-    }
-
-    public void launchGame() {
-
-        //boucle for qui envoie msg de lancement ou broadcast ?
-    }
-
+	public InetSocketAddress getAddress() {
+		return address;
+	}
 
 }
