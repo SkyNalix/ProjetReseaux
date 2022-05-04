@@ -1,6 +1,7 @@
 package serveur;
 
 import java.io.BufferedReader;
+import java.util.Random;
 
 public class Utils {
 
@@ -53,5 +54,16 @@ public class Utils {
 			return str.substring( 0, str.length() - 3 ).split( " " );
 		return str.split( " " );
 	}
+
+	public static int randomPort(){
+        Random a = new Random(); 
+        int m = 4000 + a.nextInt(1000);
+        for(int i =0; i < Serveur.listePartie.size();i++){
+            if(Serveur.listePartie.get(i).getID() == m){
+                return randomPort();
+            }
+        }
+        return m;
+    }
 
 }

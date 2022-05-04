@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <netdb.h>
+#include <time.h>
 
 #define BUFF_SIZE 200
 #define MESS_SIZE 1000
@@ -109,6 +110,25 @@ void getGamesList(char *str) {
     }
 }
 
+void *actionThread(void *port){ //serveur udp pour recevoir message
+    int sock=socket(PF_INET,SOCK_DGRAM,0);
+    struct sockaddr_in address_sock;
+    address_sock.sin_family=AF_INET;
+    address_sock.sin_port=htons((int) port);
+    address_sock.sin_addr.s_addr=htonl(INADDR_ANY);
+    int r=bind(sock,(struct sockaddr *)&address_sock,sizeof(struct
+    sockaddr_in));
+    if(r==0){
+        char tampon[500];
+        while(1){
+            int rec=recv(sock,tampon,500,0);
+            tampon[rec]='\0';
+            printf("%s\n",tampon);
+        }
+    }
+    return 0;
+}
+
 // les commandes a utiliser avant le commencement d'une partie
 uint8_t prePartieStart() {
     uint8_t id_partie = -1; // id de la partie rejoint
@@ -122,15 +142,24 @@ uint8_t prePartieStart() {
             char id[BUFF_SIZE];
             printf("Entrez votre id\n");
             readInput(id);
-            printf("NEWPL %s %d\n", id, port);
-            sprintf(mess, "NEWPL %s %d***", id, port);
+            
+            printf("Entrez votre port\n");
+            char tmpPort[BUFF_SIZE];
+            readInput(tmpPort);
+            in_port_t port2 = (in_port_t) atoi(tmpPort);
 
+            printf("NEWPL %s %d\n", id, port2);
+            sprintf(mess, "NEWPL %s %d***", id, port2);
+            
             send(sock, mess, strlen(mess), 0);
             splitString(receive(), &tab);
             if (strcmp(tab[0], "REGOK") == 0) { // [REGOK␣m***]
                 uint8_t m = strtoul(tab[1], NULL, 16);
                 printf("Partie %d créée\n", m);
                 id_partie = m;
+
+                pthread_t pth ;
+                pthread_create(&pth,NULL,actionThread,port2);
             } else {
                 printf("[ERROR] Partie non créée\n");
             }
@@ -138,17 +167,23 @@ uint8_t prePartieStart() {
             char id[BUFF_SIZE];
             printf("Entrez votre id\n");
             readInput(id);
-
+            printf("Entrez votre port\n");
+            char tmpPort[BUFF_SIZE];
+            readInput(tmpPort);
+            in_port_t port2 = (in_port_t) atoi(tmpPort);
             printf("Entrez le numéro de la partie\n");
             readInput(buff);
-            printf("REGIS %s %d %s\n", id, port, buff);
-            sprintf(mess, "REGIS %s %d %s***", id, port, buff);
+
+            printf("REGIS %s %d %s\n", id, port2, buff);
+            sprintf(mess, "REGIS %s %d %s***", id, port2, buff);
             send(sock, mess, strlen(mess), 0);
             splitString(receive(), &tab);
             if (strcmp(tab[0], "REGOK") == 0) { //  [REGOK␣m***]
                 uint8_t m = strtoul(tab[1], NULL, 16);
                 printf("Partie %d rejoint\n", m);
                 id_partie = m;
+                pthread_t pth ;
+                pthread_create(&pth,NULL,actionThread,port2);
             } else {
                 printf("[ERROR] La partie %s n'a pas été rejoint\n", buff);
             }
@@ -223,11 +258,14 @@ uint8_t prePartieStart() {
             if (strcmp(tmp, "DUNNO") != 0) {
                 getGamesList(tmp); // [GAMES␣n***]
             }
+
         } else {
             printf("Réessayez\n");
         }
     }
 }
+
+
 
 int main(int argc, char **argv) {
     char *str_port = "4243";
@@ -346,16 +384,18 @@ int main(int argc, char **argv) {
             readInput(id);
             printf("Entrez le message\n");
             readInput(message);
-            sprintf(mess, "SEND? %s %s***", id, message);
+            sprintf(mess, "SEND? %s %s %s***", id, id, message);
+            printf("%s \n",mess);
             send(sock, mess, strlen(mess), 0);
 
-            tmp = receive();
+            /*tmp = receive();
             if (strcmp(tmp, "SEND!") == 0) { //  [SEND!***]
                 printf("Message envoyé\n");
             } else { // [NSEND***]
                 printf("[ERROR] Message non envoyé\n");
-            }
+            } */
         } else {
+            printf("%s \n",buff);
             printf("[ERROR] Réessayez\n");
         }
     }

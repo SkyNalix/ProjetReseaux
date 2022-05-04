@@ -1,8 +1,11 @@
 package serveur;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.channels.*;
 import java.net.*;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 public class Serveur implements Runnable {
 
@@ -26,6 +29,7 @@ public class Serveur implements Runnable {
 			Partie.envoyerListePartie( pw, listePartie );
 
 			Joueur joueur = null;
+			
 
 			while( true ) { //boucle pour commande
 				Thread.sleep( 1000 );
@@ -33,6 +37,8 @@ public class Serveur implements Runnable {
 				if( this.socket.isClosed() ) {
 					return;
 				}
+				
+
 				System.out.println( "|" + x + "|" );
 
 				if( x.equals( "GAME?***" ) ) { //GAMES*** affiche le nb de partie non lancé
@@ -43,7 +49,9 @@ public class Serveur implements Runnable {
 						pw.write( "REGNO***" ); pw.flush();
 					} else {
 						// NEWPL id port*** crée une partie (id = id joueur)
-						joueur = Joueur.newpl( this.socket, x );
+						
+						joueur = Joueur.newpl(this.socket, x );
+						
 						if( joueur == null ) {
 							pw.write( "REGNO***" ); pw.flush();
 						} else {
@@ -58,7 +66,7 @@ public class Serveur implements Runnable {
 					} else {
 						pw.write( "REGNO***" ); pw.flush();
 					}
-
+				
 				} else if( x.equals( "UNREG***" ) && joueur != null ) { //UNREG*** quitte la partie
 					pw.write( "UNROK" + " " + joueur.getPartie().getID() + "***" ); pw.flush();
 					joueur.getPartie().retirerJoueur( joueur );
@@ -75,6 +83,7 @@ public class Serveur implements Runnable {
 
 				} else if( x.startsWith( "SEND?" ) && x.endsWith( "***" ) && joueur != null && joueur.getPartie().getLancer() ) {
 					joueur.chatter( x );
+					pw.write("SEND!");pw.flush();
 				} else if( x.startsWith( "DISC!" ) && x.endsWith( "***" ) && joueur == null ) { // se deconnecte
 					socket.close();
 					return;
@@ -245,6 +254,9 @@ public class Serveur implements Runnable {
 												 str_p
 											   ) ); pw.flush();
 					}
+				} else if(x.startsWith("MALL?")){
+					String str = x.substring(6, x.length()-3);
+					joueur.chatter(str);
 				} else {
 					pw.write( "DUNNO***" ); pw.flush();
 				}
@@ -284,8 +296,12 @@ public class Serveur implements Runnable {
 			while( true ) {
 				Socket socket = servSocket.accept();
 				Thread t = new Thread( new Serveur( socket ) );
+				Thread servUDP = new Thread(new ServeurUDP(socket.getPort()));
 				synchronized( t ) {
 					t.start();
+				}
+				synchronized( t ) {
+					servUDP.start();
 				}
 			}
 		} catch( Exception e ) {
