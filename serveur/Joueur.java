@@ -2,10 +2,6 @@ package serveur;
 
 import java.io.*;
 import java.net.*;
-import java.nio.ByteBuffer;
-import java.nio.channels.*;
-import java.util.ArrayList;
-import java.util.Iterator;
 
 import serveur.labyrinthe.Labyrinthe;
 import serveur.labyrinthe.Personne;
@@ -185,9 +181,9 @@ public class Joueur extends Personne {
 	}
 
 
-	public void chatter( String str ) {
+	public boolean chatter( String str ) {
 		if( partie == null )
-			return;
+			return false;
 		String id = ""; int n = 0; String msg = "";
 		for( int i = 6; str.charAt(i) != ' '; i++ ) {
 			id += str.charAt(i);
@@ -210,11 +206,13 @@ public class Joueur extends Personne {
 					);
 					new DatagramSocket().send( paquet );
 					System.out.println("msg envoyé à " + joueur.getPseudo() + " sur " + joueur.getPort());
+					return true;
 				} catch( Exception e ) {
 					e.printStackTrace();
 				}
 			}
 		}
+		return false;
 	}
 
 	

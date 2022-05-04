@@ -37,7 +37,6 @@ public class ServeurUDP implements Runnable {
                     for(int j = 0; j < Serveur.listePartie.get(i).getListeJoueur().size();j++){
                         Joueur joueur = Serveur.listePartie.get(i).getListeJoueur().get(j);
                         if(joueur.getPseudo().equals(id)){
-                            //PrintWriter pw = new PrintWriter(joueur.getSocket().getOutputStream());
                             byte[] data2 = (envoyeur + ": " + msg).getBytes();
                             DatagramPacket paquet2 = new DatagramPacket(data2,data2.length,InetAddress.getByName("localhost"),joueur.getPort());
                             DatagramSocket envoiUDP = new DatagramSocket();
