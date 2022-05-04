@@ -1,7 +1,5 @@
 package serveur;
 
-import java.util.ArrayList;
-import java.io.*;
 import java.net.*;
 
 public class ServeurUDP implements Runnable {
