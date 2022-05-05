@@ -140,7 +140,7 @@ public class Partie {
 	public void launchGame() {
 		new Thread(()->{
 			lancer = true;
-			game = new Game(new Labyrinthe( 10, 10, getArrayJoueur() ), true );
+			game = new Game(new Labyrinthe( 10, 10, getArrayJoueur() ), false );
 
 			String s = String.format( "WELCO %d %d %d %d %s %d***",
 					getID(),

@@ -1,11 +1,8 @@
 package serveur;
 
 import java.io.*;
-import java.nio.ByteBuffer;
-import java.nio.channels.*;
 import java.net.*;
 import java.util.ArrayList;
-import java.util.Iterator;
 
 public class Serveur implements Runnable {
 
@@ -82,8 +79,10 @@ public class Serveur implements Runnable {
 					Partie.listePartie( x, pw );                      // partie demandé
 
 				} else if( x.startsWith( "SEND?" ) && x.endsWith( "***" ) && joueur != null && joueur.getPartie().getLancer() ) {
-					joueur.chatter( x );
-					pw.write("SEND!");pw.flush();
+					if(joueur.chatter( x )){
+						pw.write("SEND!***");pw.flush();
+					}else{pw.write("NSEND!***");pw.flush();}
+					
 				} else if( x.startsWith( "DISC!" ) && x.endsWith( "***" ) && joueur == null ) { // se deconnecte
 					socket.close();
 					return;
@@ -296,12 +295,8 @@ public class Serveur implements Runnable {
 			while( true ) {
 				Socket socket = servSocket.accept();
 				Thread t = new Thread( new Serveur( socket ) );
-				Thread servUDP = new Thread(new ServeurUDP(socket.getPort()));
 				synchronized( t ) {
 					t.start();
-				}
-				synchronized( t ) {
-					servUDP.start();
 				}
 			}
 		} catch( Exception e ) {

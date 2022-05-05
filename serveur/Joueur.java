@@ -2,10 +2,6 @@ package serveur;
 
 import java.io.*;
 import java.net.*;
-import java.nio.ByteBuffer;
-import java.nio.channels.*;
-import java.util.ArrayList;
-import java.util.Iterator;
 
 import serveur.labyrinthe.Labyrinthe;
 import serveur.labyrinthe.Personne;
@@ -185,16 +181,15 @@ public class Joueur extends Personne {
 	}
 
 
-	public void chatter( String str ) {
+	public boolean chatter( String str ) {
+		
+		String[] tab = Utils.splitString(str);
 		if( partie == null )
-			return;
-		String id = ""; int n = 0; String msg = "";
-		for( int i = 6; str.charAt(i) != ' '; i++ ) {
-			id += str.charAt(i);
-			n = i;
-		}
-		for(int j = n;j < str.length()-3;j++){
-			msg += str.charAt(j);
+			return false;
+		String id = tab[1];
+		String msg = "";
+		for(int i = 2;i < tab.length;i++){
+			msg += tab[i] + " ";
 		}
 
 		System.out.println( "id|" + id + "|");
@@ -203,18 +198,23 @@ public class Joueur extends Personne {
 				try {
 
 					//String s = "Envoi";
-					byte[] data = (msg + this.getPseudo()).getBytes();
+					byte[] data = (this.getPseudo() + ": " + msg).getBytes();
 					DatagramPacket paquet = new DatagramPacket( data, data.length,
 																joueur.socketAssocie.getInetAddress(),
-																joueur.socketAssocie.getPort()
+																joueur.port
 					);
-					new DatagramSocket().send( paquet );
+					DatagramSocket z = new DatagramSocket();
+					z.send(paquet);
+					z.close();
+					//new DatagramSocket().send( paquet );
 					System.out.println("msg envoyé à " + joueur.getPseudo() + " sur " + joueur.getPort());
+					return true;
 				} catch( Exception e ) {
 					e.printStackTrace();
 				}
 			}
 		}
+		return false;
 	}
 
 	

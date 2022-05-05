@@ -384,16 +384,16 @@ int main(int argc, char **argv) {
             readInput(id);
             printf("Entrez le message\n");
             readInput(message);
-            sprintf(mess, "SEND? %s %s %s***", id, id, message);
+            sprintf(mess, "SEND? %s %s***", id, message);
             printf("%s \n",mess);
             send(sock, mess, strlen(mess), 0);
 
-            /*tmp = receive();
+            tmp = receive();
             if (strcmp(tmp, "SEND!") == 0) { //  [SEND!***]
                 printf("Message envoyé\n");
             } else { // [NSEND***]
                 printf("[ERROR] Message non envoyé\n");
-            } */
+            } 
         } else {
             printf("%s \n",buff);
             printf("[ERROR] Réessayez\n");
