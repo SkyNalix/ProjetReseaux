@@ -15,16 +15,10 @@ public class Partie {
 	private final int id;
 	private final InetSocketAddress address; // ip et port multicast
 	private final ArrayList<Joueur> listeJoueur = new ArrayList<>();
-	private int maxJoueur;
 	private boolean lancer = false;
 	private Game game;
-	String ip;
-	public Partie() {
-		this( Integer.MAX_VALUE );
-	}
 
-	public Partie( int maxJoueur ) {
-		this.maxJoueur = maxJoueur;
+	public Partie() {
 		int id = 0;
 		while( true ) { // cherche un id de partie qui n'est pas pris
 			boolean found = false;
@@ -46,27 +40,8 @@ public class Partie {
 			if( !found ) break;
 			port++;
 		}
-		this.ip = randomIP(224, 42, 51, 44);
 		address = new InetSocketAddress( "224.42.51.44", port );
 		Serveur.listePartie.add( this );
-	}
-
-	public String randomIP(int p1,int p2,int p3,int p4){
-		for(Partie partie : Serveur.listePartie ){
-			String ip = p1 + "." + p2 + "." + p3 +"." + p4;
-			if( partie.ip.equals(ip)){
-				 if(p4 <= 255){
-					return randomIP(p1, p2, p3, p4+1);
-				}else if(p3 <= 255){
-					return randomIP(p1, p2, p3+1, p4);
-				}else if(p2 <= 255){
-					return randomIP(p1, p2+1, p3, p4);
-				}else if(p1 <= 239){
-					return randomIP(p1+1, p2, p3, p4);
-				}
-			}
-		}
-		return "224.42.51.44";
 	}
 
 	public Joueur[] getArrayJoueur() {
@@ -93,10 +68,6 @@ public class Partie {
 		return this.lancer;
 	}
 
-	public int getMaxJoueur() {
-		return this.maxJoueur;
-	}
-
 	public int getID() {
 		return this.id;
 	}
@@ -105,16 +76,12 @@ public class Partie {
 		this.lancer = nouveau;
 	}
 
-	public void setMaxJoueur( int nouveau ) {
-		this.maxJoueur = nouveau;
-	}
-
 	public ArrayList<Joueur> getListeJoueur() {
 		return this.listeJoueur;
 	}
 
 	public boolean ajouterJoueur( Joueur nouveau ) {
-		if( this.getNbJoueur() == this.getMaxJoueur() || this.lancer )
+		if( this.lancer )
 			return false;
 		for( Joueur joueur : this.listeJoueur ) {
 			if( joueur.getPseudo().equals( nouveau.getPseudo() ) )
@@ -137,9 +104,15 @@ public class Partie {
 	public void retirerJoueur( Joueur supr ) {
 		if( this.listeJoueur.contains( supr ) ) {
 			this.listeJoueur.remove( supr );
-			if( getNbJoueur() == 0 )
+			if( lancer )
+				game.lab.getLabyrinthe()[supr.getPosition().getX()][supr.getPosition().getY()] = 0;
+			if( getNbJoueur() == 0 ) {
+				if( this.game != null ) {
+					this.game.display.dispose();
+					this.game.go = false;
+				}
 				Serveur.listePartie.remove( this );
-			else if( !lancer && tousPret() ) {
+			} else if( !lancer && tousPret() ) {
 				launchGame();
 				System.out.println( "tout le monde est prêt" );
 			}
@@ -157,17 +130,17 @@ public class Partie {
 	}
 
 	public void launchGame() {
-		new Thread(()->{
+		new Thread( () -> {
 			lancer = true;
-			game = new Game(new Labyrinthe( 10, 10, getArrayJoueur() ), false );
+			game = new Game( new Labyrinthe( 10, 10, getArrayJoueur() ) );
 
 			String s = String.format( "WELCO %d %d %d %d %s %d***",
-					getID(),
-					getGame().lab.getHauteur(),
-					getGame().lab.getLargeur(),
-					getGame().lab.getNbFantomes(),
-					address.getHostName() + "#".repeat( 15 - address.getHostName().length() ),
-					address.getPort() );
+									  getID(),
+									  getGame().lab.getHauteur(),
+									  getGame().lab.getLargeur(),
+									  getGame().lab.getNbFantomes(),
+									  address.getHostName() + "#".repeat( 15 - address.getHostName().length() ),
+									  address.getPort() );
 			for( Joueur joueur : listeJoueur ) {
 				try {
 					PrintWriter pw = new PrintWriter( joueur.getSocket().getOutputStream() );
@@ -183,7 +156,7 @@ public class Partie {
 					e.printStackTrace();
 				}
 			}
-		}).start();
+		} ).start();
 
 	}
 
@@ -229,14 +202,16 @@ public class Partie {
 		pw.write( "DUNNO***" ); pw.flush();
 	}
 
-	public void broadCast(String mess){
-		try{
+	public void multicastMessage( String mess ) {
+		try {
 			DatagramSocket socket = new DatagramSocket();
 			byte[] data = mess.getBytes();
-			DatagramPacket paquet = new DatagramPacket(data, data.length,address);
-			socket.send(paquet);
+			DatagramPacket paquet = new DatagramPacket( data, data.length, address );
+			socket.send( paquet );
 			socket.close();
-		}catch(Exception e){e.printStackTrace();}
+		} catch( Exception e ) {
+			e.printStackTrace();
+		}
 	}
 
 	public InetSocketAddress getAddress() {

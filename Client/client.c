@@ -5,7 +5,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <netdb.h>
-#include <time.h>
+#include <pthread.h>
+#include <arpa/inet.h>
+
 
 #define BUFF_SIZE 200
 #define MESS_SIZE 1000
@@ -110,21 +112,58 @@ void getGamesList(char *str) {
     }
 }
 
-void *actionThread(void *port){ //serveur udp pour recevoir message
-    int sock=socket(PF_INET,SOCK_DGRAM,0);
+void *multicastThread(void *arg) {
+    char (*args)[20] = arg;
+    printf("[MULTICAST] %s, %s\n", args[0], args[1]);
+    int multicast_sock=socket(PF_INET,SOCK_DGRAM,0);
+    int ok=1;
+    int r=setsockopt(multicast_sock,SOL_SOCKET,SO_REUSEPORT,&ok,sizeof(ok));
     struct sockaddr_in address_sock;
     address_sock.sin_family=AF_INET;
-    address_sock.sin_port=htons((int) port);
+    address_sock.sin_port=htons(atoi(args[1]));
     address_sock.sin_addr.s_addr=htonl(INADDR_ANY);
-    int r=bind(sock,(struct sockaddr *)&address_sock,sizeof(struct
-    sockaddr_in));
-    if(r==0){
+    r=bind(multicast_sock,(struct sockaddr *)&address_sock,sizeof(struct sockaddr_in));
+    if( r!= 0) {
+        printf("[ERROR] vous n'allez pas recevoir les messages globales\n");
+        pthread_exit((void *) EXIT_FAILURE);
+    }
+    struct ip_mreq mreq;
+    mreq.imr_multiaddr.s_addr=inet_addr(args[0]);
+    mreq.imr_interface.s_addr=htonl(INADDR_ANY);
+    r=setsockopt(multicast_sock,IPPROTO_IP,IP_ADD_MEMBERSHIP,&mreq,sizeof(mreq));
+    if( r!= 0) {
+        printf("[ERROR] vous n'allez pas recevoir les messages globales\n");
+        pthread_exit((void *) EXIT_FAILURE);
+    }
+    char tampon[100];
+    while(1){
+        ssize_t rec = recv(multicast_sock,tampon,100,0);
+        if(rec < 0 )
+            pthread_exit((void *) EXIT_FAILURE);
+        tampon[rec]='\0';
+        printf("[MULTICAST] %s\n",tampon);
+    }
+    pthread_exit(EXIT_SUCCESS);
+}
+
+void *udpThread(void *arg) { //serveur udp pour recevoir message
+    in_port_t udp_port = *((int *) arg);
+    int udp_sock = socket(PF_INET, SOCK_DGRAM, 0);
+    struct sockaddr_in address_sock;
+    address_sock.sin_family = AF_INET;
+    address_sock.sin_port = htons(udp_port);
+    address_sock.sin_addr.s_addr = htonl(INADDR_ANY);
+    int r = bind(udp_sock, (struct sockaddr *) &address_sock, sizeof(struct sockaddr_in));
+    if (r == 0) {
         char tampon[500];
-        while(1){
-            int rec=recv(sock,tampon,500,0);
-            tampon[rec]='\0';
-            printf("%s\n",tampon);
+        while (1) {
+            ssize_t rec = recv(udp_sock, tampon, 500, 0);
+            if (rec < 0) break;
+            tampon[rec] = '\0';
+            printf("[UDP %d] %s\n", udp_port, tampon);
         }
+    } else {
+        printf("[ERROR] You will not receive private messages\n");
     }
     return 0;
 }
@@ -142,7 +181,7 @@ uint8_t prePartieStart() {
             char id[BUFF_SIZE];
             printf("Entrez votre id\n");
             readInput(id);
-            
+
             printf("Entrez votre port\n");
             char tmpPort[BUFF_SIZE];
             readInput(tmpPort);
@@ -150,7 +189,7 @@ uint8_t prePartieStart() {
 
             printf("NEWPL %s %d\n", id, port2);
             sprintf(mess, "NEWPL %s %d***", id, port2);
-            
+
             send(sock, mess, strlen(mess), 0);
             splitString(receive(), &tab);
             if (strcmp(tab[0], "REGOK") == 0) { // [REGOK␣m***]
@@ -158,8 +197,8 @@ uint8_t prePartieStart() {
                 printf("Partie %d créée\n", m);
                 id_partie = m;
 
-                pthread_t pth ;
-                pthread_create(&pth,NULL,actionThread,port2);
+                pthread_t pth;
+                pthread_create(&pth, NULL, udpThread, (void *) &port2);
             } else {
                 printf("[ERROR] Partie non créée\n");
             }
@@ -182,8 +221,8 @@ uint8_t prePartieStart() {
                 uint8_t m = strtoul(tab[1], NULL, 16);
                 printf("Partie %d rejoint\n", m);
                 id_partie = m;
-                pthread_t pth ;
-                pthread_create(&pth,NULL,actionThread,port2);
+                pthread_t pth;
+                pthread_create(&pth, NULL, udpThread, (void *) &port2);
             } else {
                 printf("[ERROR] La partie %s n'a pas été rejoint\n", buff);
             }
@@ -200,11 +239,29 @@ uint8_t prePartieStart() {
                     uint16_t h = littleEndian16ToHost(strtoul(tab[2], NULL, 16));
                     uint16_t w = littleEndian16ToHost(strtoul(tab[3], NULL, 16));
                     uint8_t f = strtoul(tab[4], NULL, 16);
-                    printf("WELCO %d %d %d %d %s %s\n", m, h, w, f, tab[5], tab[6]);
+                    char ip[strlen(tab[5])];
+                    strcpy(ip, tab[5]);
+                    for (int i = (int) strlen(tab[5])-1; i >= 0; i--) { // enleve les '#' de la fin de l'ip
+                        if (ip[i] == '#') {
+                            ip[i] = '\0';
+                        } else
+                            break;
+                    }
+                    printf("WELCO %d %d %d %d %s %s\n", m, h, w, f, ip, tab[6]);
+                    pthread_t pth;
+                    char args[2][20];
+                    strcpy(args[0], ip);
+                    strcpy(args[1], tab[6]);
+                    printf(" { %s, %s }\n", args[0], args[1]);
+                    printf("#########22222##\n");
+                    pthread_create(&pth, NULL, multicastThread, (void *) &args);
+                    printf("#########33333##\n");
                     splitString(receive(), &tab);
+                    printf("#########44444##\n");
                     printf("POSIT %s %s %s\n", tab[1], tab[2], tab[3]);
                     return id_partie;
-                }
+                } else
+                    printf("DUNNO\n");
             }
         } else if (strcmp(buff, "UNREG") == 0) { // [UNREG***]
             strcpy(mess, "UNREG***");
@@ -264,7 +321,6 @@ uint8_t prePartieStart() {
         }
     }
 }
-
 
 
 int main(int argc, char **argv) {
@@ -385,7 +441,7 @@ int main(int argc, char **argv) {
             printf("Entrez le message\n");
             readInput(message);
             sprintf(mess, "SEND? %s %s***", id, message);
-            printf("%s \n",mess);
+            printf("%s \n", mess);
             send(sock, mess, strlen(mess), 0);
 
             tmp = receive();
@@ -393,9 +449,9 @@ int main(int argc, char **argv) {
                 printf("Message envoyé\n");
             } else { // [NSEND***]
                 printf("[ERROR] Message non envoyé\n");
-            } 
+            }
         } else {
-            printf("%s \n",buff);
+            printf("%s \n", buff);
             printf("[ERROR] Réessayez\n");
         }
     }
