@@ -255,7 +255,7 @@ public class Serveur implements Runnable {
 					}
 				} else if(x.startsWith("MALL?")){
 					String str = x.substring(6, x.length()-3);
-					joueur.chatter(str);
+					joueur.getPartie().broadCast(str);
 				} else {
 					pw.write( "DUNNO***" ); pw.flush();
 				}
