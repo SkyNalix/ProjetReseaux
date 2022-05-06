@@ -18,7 +18,7 @@ public class Partie {
 	private int maxJoueur;
 	private boolean lancer = false;
 	private Game game;
-
+	String ip;
 	public Partie() {
 		this( Integer.MAX_VALUE );
 	}
@@ -46,8 +46,27 @@ public class Partie {
 			if( !found ) break;
 			port++;
 		}
+		this.ip = randomIP(224, 42, 51, 44);
 		address = new InetSocketAddress( "224.42.51.44", port );
 		Serveur.listePartie.add( this );
+	}
+
+	public String randomIP(int p1,int p2,int p3,int p4){
+		for(Partie partie : Serveur.listePartie ){
+			String ip = p1 + "." + p2 + "." + p3 +"." + p4;
+			if( partie.ip.equals(ip)){
+				 if(p4 <= 255){
+					return randomIP(p1, p2, p3, p4+1);
+				}else if(p3 <= 255){
+					return randomIP(p1, p2, p3+1, p4);
+				}else if(p2 <= 255){
+					return randomIP(p1, p2+1, p3, p4);
+				}else if(p1 <= 239){
+					return randomIP(p1+1, p2, p3, p4);
+				}
+			}
+		}
+		return "224.42.51.44";
 	}
 
 	public Joueur[] getArrayJoueur() {
@@ -140,7 +159,7 @@ public class Partie {
 	public void launchGame() {
 		new Thread(()->{
 			lancer = true;
-			game = new Game(new Labyrinthe( 10, 10, getArrayJoueur() ), true );
+			game = new Game(new Labyrinthe( 10, 10, getArrayJoueur() ), false );
 
 			String s = String.format( "WELCO %d %d %d %d %s %d***",
 					getID(),
@@ -210,6 +229,15 @@ public class Partie {
 		pw.write( "DUNNO***" ); pw.flush();
 	}
 
+	public void broadCast(String mess){
+		try{
+			DatagramSocket socket = new DatagramSocket();
+			byte[] data = mess.getBytes();
+			DatagramPacket paquet = new DatagramPacket(data, data.length,address);
+			socket.send(paquet);
+			socket.close();
+		}catch(Exception e){e.printStackTrace();}
+	}
 
 	public InetSocketAddress getAddress() {
 		return address;

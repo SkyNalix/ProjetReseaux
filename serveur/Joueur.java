@@ -2,7 +2,6 @@ package serveur;
 
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
 
 import serveur.labyrinthe.Labyrinthe;
 import serveur.labyrinthe.Personne;
@@ -96,12 +95,19 @@ public class Joueur extends Personne {
 		int port;
 		try {
 			port = Integer.parseInt( port_str );
+			for(int i =0 ; i < Serveur.listePartie.size();i++){
+				for(int j = 0; j < Serveur.listePartie.get(i).getListeJoueur().size();j++){
+					if(port == Serveur.listePartie.get(i).getListeJoueur().get(j).getPort()){
+						return null;
+					}
+				}
+			}
 		} catch( Exception e ) {
 			return null;
 		}
 		if( id.length() != 8 || port_str.length() != 4 )
 			return null;
-		Joueur joueur = new Joueur( id, socket, port );
+		Joueur joueur = new Joueur( id, socket,port);
 		Partie partie = new Partie( 32 );
 		partie.ajouterJoueur( joueur );
 		Labyrinthe lab = new Labyrinthe( 10, 10, partie.getArrayJoueur() );
@@ -143,6 +149,13 @@ public class Joueur extends Personne {
 		int partie_id;
 		try {
 			port = Integer.parseInt( port_str );
+			for(int i =0 ; i < Serveur.listePartie.size();i++){
+				for(int j = 0; j < Serveur.listePartie.get(i).getListeJoueur().size();j++){
+					if(port == Serveur.listePartie.get(i).getListeJoueur().get(j).getPort()){
+						return null;
+					}
+				}
+			}
 			partie_id = Integer.parseInt( partie_id_str );
 		} catch( Exception e ) {
 			return null;
@@ -168,30 +181,42 @@ public class Joueur extends Personne {
 	}
 
 
-	public void chatter( String str ) {
+	public boolean chatter( String str ) {
+		
+		String[] tab = Utils.splitString(str);
 		if( partie == null )
-			return;
-		String id = "";
-		for( int i = 6; i < str.length() - 3; i++ ) {
-			id += str.charAt( i );
+			return false;
+		String id = tab[1];
+		String msg = "";
+		for(int i = 2;i < tab.length;i++){
+			msg += tab[i] + " ";
 		}
-		System.out.println( "id:" + id );
+
+		System.out.println( "id|" + id + "|");
 		for( Joueur joueur : partie.getListeJoueur() ) {
 			if( joueur.getPseudo().equals( id ) ) {
 				try {
 
-					String s = "Envoi";
-					byte[] data = s.getBytes();
+					//String s = "Envoi";
+					byte[] data = (this.getPseudo() + ": " + msg).getBytes();
 					DatagramPacket paquet = new DatagramPacket( data, data.length,
 																joueur.socketAssocie.getInetAddress(),
-																joueur.socketAssocie.getPort()
+																joueur.port
 					);
-					new DatagramSocket().send( paquet );
+					DatagramSocket z = new DatagramSocket();
+					z.send(paquet);
+					z.close();
+					//new DatagramSocket().send( paquet );
+					System.out.println("msg envoyé à " + joueur.getPseudo() + " sur " + joueur.getPort());
+					return true;
 				} catch( Exception e ) {
 					e.printStackTrace();
 				}
 			}
 		}
+		return false;
 	}
+
+	
 
 }
