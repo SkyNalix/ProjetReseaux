@@ -103,20 +103,23 @@ int splitString(char *str, char ***res) {
     char copy[strlen(str)];
     strcpy(copy, str);
     int size = 0;
+    size_t max_str_size = 0;
 
     char *mess = strtok(copy, " ");
     while (mess != NULL) {
         size++;
+        if( max_str_size < strlen(mess))
+            max_str_size = strlen(mess);
         mess = strtok(NULL, " ");
     }
 
-    char **tab_tmp = malloc(size);
+    char **tab_tmp = malloc(size*max_str_size);
     int i = 0;
     strcpy(copy, str);
     mess = strtok(copy, " ");
     while (mess != NULL) {
-        tab_tmp[i] = malloc(sizeof(mess));
-        strcpy(tab_tmp[i], mess);
+        tab_tmp[i] = malloc(strlen(mess));
+        tab_tmp[i] = strcpy(tab_tmp[i], mess);
         i++;
         mess = strtok(NULL, " ");
     }
@@ -128,7 +131,7 @@ int splitString(char *str, char ***res) {
 ssize_t readInput(char *stockIci) {
     while (1) {
         int ch = getch();
-        pthread_mutex_lock(&verrou);
+//        pthread_mutex_lock(&verrou);
         if (max_y == print_y)
             move(print_y - 1, 0);
         else
@@ -140,11 +143,12 @@ ssize_t readInput(char *stockIci) {
             input_x = 0;
             strcpy(stdin_buff, "");
             printw("%s", stdin_buff);
-            pthread_mutex_unlock(&verrou);
+//            pthread_mutex_unlock(&verrou);
             return size;
         } else if (ch == 127) { // shift ( supprimer lettre
             stdin_buff[input_x] = '\0';
-            input_x -= 1;
+            if (input_x > 0)
+                input_x -= 1;
         } else {
             const char *key = keyname(ch);
             if (strlen(key) == 1 && key[0] != '^' && key[0] != '[') {
@@ -153,7 +157,7 @@ ssize_t readInput(char *stockIci) {
             }
         }
         printw("%s", stdin_buff);
-        pthread_mutex_unlock(&verrou);
+//        pthread_mutex_unlock(&verrou);
         refresh();
     }
 //    ssize_t size = read(STDIN_FILENO, stockIci, BUFF_SIZE - 1);
@@ -295,8 +299,11 @@ uint8_t prePartieStart() {
             if (strcmp(tmp, "DUNNO") == 0) {
                 print("DUNNO");
             } else {
+                print("%s", tmp);
                 splitString(tmp, &tab);
-                if (strcmp(tab[0], "WELCO") == 0) { // [WELCO␣m␣h␣w␣f␣ip␣port***]
+                print("%s (%s, %d)", tmp, tab[0], strcmp(tab[0], "WELCO"));
+
+//                if (strcmp(tab[0], "WELCO") == 0) { // [WELCO␣m␣h␣w␣f␣ip␣port***]
                     uint8_t m = strtoul(tab[1], NULL, 16);
                     uint16_t h = littleEndian16ToHost(strtoul(tab[2], NULL, 16));
                     uint16_t w = littleEndian16ToHost(strtoul(tab[3], NULL, 16));
@@ -318,8 +325,8 @@ uint8_t prePartieStart() {
                     splitString(receive(), &tab);
                     print("POSIT %s %s %s", tab[1], tab[2], tab[3]);
                     return id_partie;
-                } else
-                    print("DUNNO");
+//                } else
+//                    print("DUNNO");
             }
         } else if (strcmp(buff, "UNREG") == 0) { // [UNREG***]
             strcpy(mess, "UNREG***");
