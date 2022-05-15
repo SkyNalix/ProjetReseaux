@@ -106,6 +106,8 @@ public class Partie {
 			this.listeJoueur.remove( supr );
 			if( lancer )
 				game.lab.getLabyrinthe()[supr.getPosition().getX()][supr.getPosition().getY()] = 0;
+				game.lab.setJoueurs(getArrayJoueur());
+				game.display.updateContent(game.lab.getLabyrinthe());
 			if( getNbJoueur() == 0 ) {
 				if( this.game != null ) {
 					this.game.display.dispose();

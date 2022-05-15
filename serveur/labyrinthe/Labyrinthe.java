@@ -10,6 +10,8 @@
 
 package serveur.labyrinthe;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.*;
 
 
@@ -18,6 +20,7 @@ import serveur.Joueur;
 
 public class Labyrinthe {
     Random random;
+    private InetSocketAddress addressUDP; // ip et port multicast
     private Joueur[] joueurs;
     private Fantome[] fantomes;
     private int hauteur, largeur;
@@ -38,6 +41,7 @@ public class Labyrinthe {
         this(hauteur,largeur);
         this.joueurs=joueurs;
         this.posJoueurNbr=new ArrayDeque[hauteur][largeur];
+        this.addressUDP=joueurs[0].getPartie().getAddress();
         init(false);
     }
 
@@ -274,6 +278,7 @@ public class Labyrinthe {
     //fantomes
     public synchronized boolean fantomeMove(){
         int positionNotNull=0;
+        Message comminication=new Message();
         for (Fantome f : this.fantomes) {
             int index=random.nextInt(path.size());
             if (f.getPosition() != null) {
@@ -285,6 +290,11 @@ public class Labyrinthe {
                     newPos=this.path.get(index);
                 }
                 f.setPosition(newPos);
+                //envoie message
+                try{
+                    String fantomeSig="GHOST "+newPos.getX()+" "+newPos.getY()+"+++";
+                    comminication.sendUDP(this.addressUDP,fantomeSig);
+                }catch (IOException e){}
                 this.labyrinthe[newPos.getX()][newPos.getY()]=2;
             }
         }
@@ -424,7 +434,9 @@ public class Labyrinthe {
     public Joueur[] getJoueurs(){
         return joueurs;
     }
-
+    public void setJoueurs(Joueur[] joueurs){
+        this.joueurs=joueurs;
+    }
     public int[][] getLabyrinthe() {
         return labyrinthe;
     }

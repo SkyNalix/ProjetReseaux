@@ -52,7 +52,7 @@ public class Game {
 			go=this.lab.fantomeMove();
 			display.updateContent(this.lab.getLabyrinthe());
 			try {
-				sleep(60000);
+				sleep(2000);
 			} catch (InterruptedException ignored ) {
 			}
 		}
