@@ -26,15 +26,25 @@ public class Serveur implements Runnable {
 			Partie.envoyerListePartie( pw, listePartie );
 
 			Joueur joueur = null;
-			
+
 
 			while( true ) { //boucle pour commande
 				Thread.sleep( 1000 );
-				String x = Utils.lecture2( br );
+				String x = null;
+				try {
+					x = Utils.lecture2( br );
+				} catch( SocketException e ) {
+					if( joueur != null ) {
+						joueur.getPartie().retirerJoueur( joueur );
+						return;
+					}
+				} catch( Exception e ) {
+					e.printStackTrace();
+				}
 				if( this.socket.isClosed() ) {
 					return;
 				}
-				
+				if( x == null ) continue;
 
 				System.out.println( "|" + x + "|" );
 
@@ -46,9 +56,9 @@ public class Serveur implements Runnable {
 						pw.write( "REGNO***" ); pw.flush();
 					} else {
 						// NEWPL id port*** crée une partie (id = id joueur)
-						
-						joueur = Joueur.newpl(this.socket, x );
-						
+
+						joueur = Joueur.newpl( this.socket, x );
+
 						if( joueur == null ) {
 							pw.write( "REGNO***" ); pw.flush();
 						} else {
@@ -63,7 +73,7 @@ public class Serveur implements Runnable {
 					} else {
 						pw.write( "REGNO***" ); pw.flush();
 					}
-				
+
 				} else if( x.equals( "UNREG***" ) && joueur != null ) { //UNREG*** quitte la partie
 					pw.write( "UNROK" + " " + joueur.getPartie().getID() + "***" ); pw.flush();
 					joueur.getPartie().retirerJoueur( joueur );
@@ -78,11 +88,13 @@ public class Serveur implements Runnable {
 				} else if( x.startsWith( "LIST?" ) && x.endsWith( "***" ) ) { //LIST? numPartie*** affiche les joueurs de la
 					Partie.listePartie( x, pw );                      // partie demandé
 
-				} else if( x.startsWith( "SEND?" ) && x.endsWith( "***" ) && joueur != null && joueur.getPartie().getLancer() ) {
-					if(joueur.chatter( x )){
-						pw.write("SEND!***");pw.flush();
-					}else{pw.write("NSEND!***");pw.flush();}
-					
+				} else if( x.startsWith( "SEND?" ) && x.endsWith( "***" ) && joueur != null ) {
+					if( joueur.chatter( x ) ) {
+						pw.write( "SEND!***" ); pw.flush();
+					} else {
+						pw.write( "NSEND!***" ); pw.flush();
+					}
+
 				} else if( x.startsWith( "DISC!" ) && x.endsWith( "***" ) && joueur == null ) { // se deconnecte
 					socket.close();
 					return;
@@ -135,11 +147,11 @@ public class Serveur implements Runnable {
 					joueur.getPartie().getGame().moveUp( joueur, pas );
 					joueur.getPartie().getGame().posJoueursUpdate();
 
-					String str_x = joueur.getPosition().getX() + "";
+					String str_x = joueur.getPosition().getX()-1 + "";
 					str_x = "0".repeat( 3 - str_x.length() ) + str_x;
-					String str_y = joueur.getPosition().getY() + "";
+					String str_y = joueur.getPosition().getY()-1 + "";
 					str_y = "0".repeat( 3 - str_y.length() ) + str_y;
-					if( score_avant == joueur.getScore()) {
+					if( score_avant == joueur.getScore() ) {
 						pw.write( String.format( "MOVE! %s %s***", str_x, str_y ) );
 						pw.flush();
 					} else {
@@ -161,11 +173,11 @@ public class Serveur implements Runnable {
 					joueur.getPartie().getGame().moveDown( joueur, pas );
 					joueur.getPartie().getGame().posJoueursUpdate();
 
-					String str_x = joueur.getPosition().getX() + "";
+					String str_x = joueur.getPosition().getX()-1 + "";
 					str_x = "0".repeat( 3 - str_x.length() ) + str_x;
-					String str_y = joueur.getPosition().getY() + "";
+					String str_y = joueur.getPosition().getY()-1 + "";
 					str_y = "0".repeat( 3 - str_y.length() ) + str_y;
-					if( score_avant == joueur.getScore()) {
+					if( score_avant == joueur.getScore() ) {
 						pw.write( String.format( "MOVE! %s %s***", str_x, str_y ) );
 						pw.flush();
 					} else {
@@ -187,11 +199,11 @@ public class Serveur implements Runnable {
 					joueur.getPartie().getGame().moveRight( joueur, pas );
 					joueur.getPartie().getGame().posJoueursUpdate();
 
-					String str_x = joueur.getPosition().getX() + "";
+					String str_x = joueur.getPosition().getX()-1 + "";
 					str_x = "0".repeat( 3 - str_x.length() ) + str_x;
-					String str_y = joueur.getPosition().getY() + "";
+					String str_y = joueur.getPosition().getY()-1 + "";
 					str_y = "0".repeat( 3 - str_y.length() ) + str_y;
-					if( score_avant == joueur.getScore()) {
+					if( score_avant == joueur.getScore() ) {
 						pw.write( String.format( "MOVE! %s %s***", str_x, str_y ) );
 						pw.flush();
 					} else {
@@ -213,11 +225,11 @@ public class Serveur implements Runnable {
 					joueur.getPartie().getGame().moveLeft( joueur, pas );
 					joueur.getPartie().getGame().posJoueursUpdate();
 
-					String str_x = joueur.getPosition().getX() + "";
+					String str_x = joueur.getPosition().getX()-1 + "";
 					str_x = "0".repeat( 3 - str_x.length() ) + str_x;
-					String str_y = joueur.getPosition().getY() + "";
+					String str_y = joueur.getPosition().getY()-1 + "";
 					str_y = "0".repeat( 3 - str_y.length() ) + str_y;
-					if( score_avant == joueur.getScore()) {
+					if( score_avant == joueur.getScore() ) {
 						pw.write( String.format( "MOVE! %s %s***", str_x, str_y ) );
 						pw.flush();
 					} else {
@@ -232,7 +244,6 @@ public class Serveur implements Runnable {
 					p.retirerJoueur( joueur );
 					//end game
 					if( p.getNbJoueur() == 0 ) {
-						p.getGame().commandControl.interrupt();
 						p.getGame().fantomeMove.interrupt();
 					}
 					pw.write( "GOBYE***" );
@@ -240,9 +251,9 @@ public class Serveur implements Runnable {
 				} else if( x.equals( "GLIS?***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) {
 					pw.write( String.format( "GLIS! %x***", joueur.getPartie().getNbJoueur() ) ); pw.flush();
 					for( Joueur joueur1 : joueur.getPartie().getListeJoueur() ) { // [GPLYR␣id␣x␣y␣p]
-						String str_x = joueur.getPosition().getX() + "";
+						String str_x = joueur.getPosition().getX()-1 + "";
 						str_x = "0".repeat( 3 - str_x.length() ) + str_x;
-						String str_y = joueur.getPosition().getY() + "";
+						String str_y = joueur.getPosition().getY()-1 + "";
 						str_y = "0".repeat( 3 - str_y.length() ) + str_y;
 						String str_p = joueur.getScore() + "";
 						str_p = "0".repeat( 4 - str_p.length() ) + str_p;
@@ -253,9 +264,10 @@ public class Serveur implements Runnable {
 												 str_p
 											   ) ); pw.flush();
 					}
-				} else if(x.startsWith("MALL?")){
-					String str = x.substring(6, x.length()-3);
-					joueur.getPartie().broadCast(str);
+				} else if( x.startsWith( "MALL?" ) ) {
+					String str = x.substring( 6, x.length() - 3 );
+					joueur.getPartie().multicastMessage( str );
+					pw.write( "MALL!***" ); pw.flush();
 				} else {
 					pw.write( "DUNNO***" ); pw.flush();
 				}
@@ -266,8 +278,17 @@ public class Serveur implements Runnable {
 		}
 	}
 
+	public static boolean debug = false; // print debug info
+	public static boolean nogui = false;
 
 	public static void main( String[] args ) {
+		for( String arg : args ) {
+			if( arg.equals( "--debug" ) )
+				debug = true;
+			if( arg.equals( "--nogui" ) )
+				nogui = true;
+		}
+
 		try {
 			Joueur j1 = new Joueur( "joueur01", null, 4242 );
 			Joueur j2 = new Joueur( "joueur02", null, 4243 );
@@ -277,8 +298,8 @@ public class Serveur implements Runnable {
 			j2.setReady( true );
 			j3.setReady( true );
 
-			Partie test1 = new Partie( 32 );
-			Partie test2 = new Partie( 32 );
+			Partie test1 = new Partie();
+			Partie test2 = new Partie();
 			test1.ajouterJoueur( j1 ); test1.ajouterJoueur( j2 );
 			test2.ajouterJoueur( j3 );
 

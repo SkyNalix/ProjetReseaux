@@ -61,6 +61,7 @@ public class Labyrinthe {
             }
             pos.setX(pos.getX()-1);
         }
+        this.labyrinthe[pos.getX()][pos.getY()] = 3;
         j.setPosition(pos);
         print();
         return pos;
@@ -274,20 +275,15 @@ public class Labyrinthe {
     public synchronized boolean fantomeMove(){
         int positionNotNull=0;
         for (Fantome f : this.fantomes) {
-            System.out.println("block Test1");
-            System.out.println("fantomeMove f");
             int index=random.nextInt(path.size());
             if (f.getPosition() != null) {
                 positionNotNull+=1;
-                System.out.println("block Test2");
                 this.labyrinthe[f.getPosition().getX()][f.getPosition().getY()]=0;
                 Position newPos=path.get(index);
                 while(this.labyrinthe[newPos.getX()][newPos.getY()]==2||this.labyrinthe[newPos.getX()][newPos.getY()]==3){
-                    System.out.println("oh no");
                     index=random.nextInt(this.path.size());
                     newPos=this.path.get(index);
                 }
-                System.out.println("update Position: x "+ newPos.getX()+" y"+newPos.getY());
                 f.setPosition(newPos);
                 this.labyrinthe[newPos.getX()][newPos.getY()]=2;
             }

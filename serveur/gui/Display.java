@@ -31,7 +31,8 @@ public class Display extends JFrame{
 		panneauInit();
 		setContentPane(panneau);
 		setSize(1000,1000);
-		setVisible(true);
+		if( !Serveur.nogui )
+			setVisible(true);
 		updateContent(lab);
 	}
 

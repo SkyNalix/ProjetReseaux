@@ -10,7 +10,7 @@ public class Joueur extends Personne {
 
 	private final String pseudo;
 	private final Socket socketAssocie;
-	private Partie partie;
+	public Partie partie;
 	private boolean isReady = false;
 	private final int port;
 	private int score = 0;
@@ -59,34 +59,6 @@ public class Joueur extends Personne {
 		return false;
 	}
 
-	public void envoyerMessage( String msg ) {
-		try {
-			PrintWriter pw = new PrintWriter( this.socketAssocie.getOutputStream() );
-			pw.write( msg );
-			pw.flush();
-		} catch( Exception e ) {
-			e.printStackTrace();
-		}
-	}
-
-	public void creationProfile() {
-		try {
-			BufferedReader br = new BufferedReader( new InputStreamReader( this.socketAssocie.getInputStream() ) );
-			PrintWriter pw = new PrintWriter( this.socketAssocie.getOutputStream() );
-			while( true ) {
-				if( this.getPseudo().length() == 8 ) {
-					return;
-				} else {
-					pw.write( "Pseudo invalide veuillez recommencer" );
-					pw.flush();
-					this.setPseudo( br.readLine() );
-				}
-			}
-		} catch( Exception e ) {
-			e.printStackTrace();
-		}
-	}
-
 	public static Joueur newpl( Socket socket, String str ) {
 		//on decrypte le str de la Forme NEWPL id port***
 		String[] split = Utils.splitString( str );
@@ -108,32 +80,10 @@ public class Joueur extends Personne {
 		if( id.length() != 8 || port_str.length() != 4 )
 			return null;
 		Joueur joueur = new Joueur( id, socket,port);
-		Partie partie = new Partie( 32 );
+		Partie partie = new Partie();
 		partie.ajouterJoueur( joueur );
-		Labyrinthe lab = new Labyrinthe( 10, 10, partie.getArrayJoueur() );
-		Game g = new Game( lab, false );
-		partie.setGame( g );
 		joueur.partie = partie;
 		return joueur;
-	}
-
-	public boolean connexionSimple( String nomPartie ) {
-		if( this.getPartie() != null ) {
-			return false;
-		}
-		String res = "";
-		for( int i = 8; i < nomPartie.length() - 3; i++ ) {
-			res += Character.toString( nomPartie.charAt( i ) );
-		}
-		for( int i = 0; i < Serveur.listePartie.size(); i++ ) {
-			if( Serveur.listePartie.get( i ).getID() == Integer.parseInt( res ) ) {
-				if( Serveur.listePartie.get( i ).ajouterJoueur( this ) ) {
-					this.partie = Serveur.listePartie.get( i );
-					return true;
-				}
-			}
-		}
-		return false;
 	}
 
 	public static Joueur rejoindrePartie( Socket socket, String str ) {
@@ -176,9 +126,6 @@ public class Joueur extends Personne {
 		return null; // partie non trouvée
 	}
 
-	public void inviterPersonne( String pseudo ) {
-		// TODO
-	}
 
 
 	public boolean chatter( String str ) {
