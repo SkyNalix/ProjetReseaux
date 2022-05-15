@@ -61,6 +61,7 @@ public class Labyrinthe {
             }
             pos.setX(pos.getX()-1);
         }
+        this.labyrinthe[pos.getX()][pos.getY()] = 3;
         j.setPosition(pos);
         print();
         return pos;

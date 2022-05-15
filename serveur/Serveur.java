@@ -88,7 +88,7 @@ public class Serveur implements Runnable {
 				} else if( x.startsWith( "LIST?" ) && x.endsWith( "***" ) ) { //LIST? numPartie*** affiche les joueurs de la
 					Partie.listePartie( x, pw );                      // partie demandé
 
-				} else if( x.startsWith( "SEND?" ) && x.endsWith( "***" ) && joueur != null && joueur.getPartie().getLancer() ) {
+				} else if( x.startsWith( "SEND?" ) && x.endsWith( "***" ) && joueur != null ) {
 					if( joueur.chatter( x ) ) {
 						pw.write( "SEND!***" ); pw.flush();
 					} else {
