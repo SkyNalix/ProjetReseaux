@@ -70,8 +70,7 @@ public class Game {
 			go=this.lab.fantomeMove();
 			display.updateContent(this.lab.getLabyrinthe());
 		}
-		//TODO END
-		System.out.println("END of GAME y a plus de fantome");
+		//END
 		try {
 			Joueur gagnant=new Joueur(null,null,0);
 			gagnant.setScore(-1);
@@ -90,27 +89,32 @@ public class Game {
 		}
 		return nbr;
 	}
+	private void retireJoueur(Joueur j){
+		for(int i=0;i<this.joueurs.length;i++){
+			if(joueurs[i]==j){
+				joueurs[i]=null;
+			}
+		}
+	}
 	private void sendClassement(){
 		try{
 			for(int i=0;i<joueurs.length;i++){
-				Joueur gagnant=new Joueur(null,null,0);
-				gagnant.setScore(-1);
 				if(joueurs[i]!=null){
+					Joueur gagnant=new Joueur(null,null,0);
+					gagnant.setScore(-1);
 					for(int j=0;j<joueurs.length;j++){
 						if(joueurs[j]!=null){
 							if(joueurs[j].getScore()>gagnant.getScore()){
 								gagnant=joueurs[j];
-								communication.sendUDP(lab.addressUDP,"TOPPL "+gagnant.getPseudo()+" "+gagnant.getScore()+"+++");
-								joueurs[j].getSocket().close();
-								joueurs[j]=null;
 							}
 						}
 					}
+					gagnant.getSocket().close();
+					retireJoueur(gagnant);
+					communication.sendUDP(lab.addressUDP,"TOPPL "+gagnant.getPseudo()+" "+gagnant.getScore()+"+++");
 				}
 			}
-
+			communication.sendUDP(lab.addressUDP,"ENDGA+++");
 		}catch (Exception e){}
-
 	}
-
 }

@@ -340,11 +340,10 @@ public class Labyrinthe {
         System.out.println("nbrFantome: "+nbrFantome);
 
         if(nbrFantome==0){
-            //System.out.println("END OF G--A--M--E-----\n");
+            //END
             this.inGame=false;
             Game.sleep=false;
             notify();
-            //TODO END OF GAME
         }
     }
 
