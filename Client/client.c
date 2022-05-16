@@ -424,7 +424,7 @@ int main(int argc, char **argv) {
                     strcpy(args[1], tab[6]);
                     pthread_create(&multicast_thread, NULL, multicastThread, (void *) &args);
                     splitString(receive(), &tab);
-                    print("Ta position sur le plateau est (%d, %d)", tab[2], tab[3]);
+                    print("Ta position sur le plateau est (%s, %s)", tab[2], tab[3]);
                 } else
                     print("DUNNO");
             }
@@ -610,7 +610,26 @@ int main(int argc, char **argv) {
                 print("[ERROR] Message non envoye");
             }
         } else {
-            print("[ERROR] Reessayez");
+            int testMov=1;
+            if(strcmp(buff,"z")==0){
+                strcat(mess,"UPMOV");
+            }else if(strcmp(buff,"q")==0){
+                strcat(mess,"LEMOV");
+            }else if(strcmp(buff,"s")==0){
+                strcat(mess,"DOMOV");
+            }else if(strcmp(buff,"d")==0){
+                strcat(mess,"RIMOV");
+            }else{
+                testMov=0;
+                print("[ERROR] Reessayez");
+            }
+            if(testMov){
+                strcat(mess, " ");
+                strcat(mess, "001");
+                strcat(mess, "***");
+                send(sock, mess, strlen(mess), 0);
+            }
+            
         }
     }
 

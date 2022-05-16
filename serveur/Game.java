@@ -5,17 +5,20 @@ package serveur;
 //import java.util.Dictionary;
 //import java.util.HashMap;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 import serveur.gui.Display;
 import serveur.labyrinthe.*;
 
+import static java.lang.Thread.interrupted;
 import static java.lang.Thread.sleep;
 
 import java.net.DatagramSocket;
 
 public class Game {
+	Message communication =new Message();
 	Joueur[] joueurs;
 	Labyrinthe lab;
 	Display display;
@@ -47,16 +50,68 @@ public class Game {
 	}
 
 	boolean go=true;
+	public static boolean sleep=true;
 	Thread fantomeMove=new Thread(()->{
-		while(go&&display.isInGame()) {
+		while(go&&display.isInGame()&&this.lab.isInGame()) {
+
+			new Thread(()->{
+				try{
+					sleep(60000);
+					sleep=false;
+				}catch (Exception e){}
+			}).start();
+			while(sleep){
+				try {
+					wait();
+				}catch (Exception e ) {}
+			}
+			sleep=true;
+
 			go=this.lab.fantomeMove();
 			display.updateContent(this.lab.getLabyrinthe());
-			try {
-				sleep(2000);
-			} catch (InterruptedException ignored ) {
-			}
 		}
+		//TODO END
+		System.out.println("END of GAME y a plus de fantome");
+		try {
+			Joueur gagnant=new Joueur(null,null,0);
+			gagnant.setScore(-1);
+			communication.sendUDP(this.lab.addressUDP,"CLASS "+getNbrJoueur()+"+++");
+			sendClassement();
+		} catch (IOException e) {}
+		display.dispose();
 
 	});
+	private int getNbrJoueur(){
+		int nbr=0;
+		for(Joueur j:joueurs){
+			if(j!=null){
+				nbr+=1;
+			}
+		}
+		return nbr;
+	}
+	private void sendClassement(){
+		try{
+			for(int i=0;i<joueurs.length;i++){
+				Joueur gagnant=new Joueur(null,null,0);
+				gagnant.setScore(-1);
+				if(joueurs[i]!=null){
+					for(int j=0;j<joueurs.length;j++){
+						if(joueurs[j]!=null){
+							if(joueurs[j].getScore()>gagnant.getScore()){
+								gagnant=joueurs[j];
+
+									communication.sendUDP(lab.addressUDP,"TOPPL "+gagnant.getPseudo()+" "+gagnant.getScore()+"+++");
+
+								joueurs[j]=null;
+							}
+						}
+					}
+				}
+			}
+
+		}catch (Exception e){}
+
+	}
 
 }

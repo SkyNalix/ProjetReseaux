@@ -6,8 +6,6 @@
  * labyrinthe est un int[][]
  */
 
-//TODO fantomeMove()
-
 package serveur.labyrinthe;
 
 import java.io.IOException;
@@ -16,16 +14,20 @@ import java.util.*;
 
 
 import static java.lang.Thread.sleep;
+
+import serveur.Game;
 import serveur.Joueur;
 
 public class Labyrinthe {
     Random random;
-    private InetSocketAddress addressUDP; // ip et port multicast
+    private boolean inGame=true;
+    public InetSocketAddress addressUDP; // ip et port multicast
     private Joueur[] joueurs;
     private Fantome[] fantomes;
     private int hauteur, largeur;
     int[][] labyrinthe;
     boolean border = true;
+    Message comminication=new Message();
     public boolean drawTrace=false;//permet d'affiche le detail de la création
     ArrayList<Position> path;//tout position de chemin
     Deque<Integer>[][] posJoueurNbr;
@@ -46,7 +48,6 @@ public class Labyrinthe {
     }
 
     //dep
-    //TODO cas renconctre fantome
     public synchronized Position moveUp( Joueur j, int pas ) {
         Position pos = j.getPosition();
         for( int i = 0; i < pas; i++ ) {
@@ -54,8 +55,14 @@ public class Labyrinthe {
                 break;
             } else {
                 if( this.labyrinthe[pos.getX() - 1][pos.getY()] == 2 ) {
+                    //retire fantome
                     elimineFantome( new Position( pos.getX() - 1, pos.getY() ) );
                     j.setScore( j.getScore() + 1 );
+                    //envoie message
+                    String scoreChange="SCORE "+j.getPseudo()+" "+j.getScore()+" "+pos.getX()+" "+(pos.getY()-1);
+                    try {
+                        comminication.sendUDP(this.addressUDP, scoreChange);
+                    }catch (IOException e){}
                 }
                 this.posJoueurNbr[pos.getX()][pos.getY()].pop();
                 if (this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty()) {
@@ -78,8 +85,14 @@ public class Labyrinthe {
                 break;
             } else {
                 if( this.labyrinthe[pos.getX()][pos.getY() + 1] == 2 ) {
+                    //retire Fantome
                     j.setScore( j.getScore() + 1 );
                     elimineFantome( new Position( pos.getX(), pos.getY() + 1 ) );
+                    //envoie message
+                    String scoreChange="SCORE "+j.getPseudo()+" "+j.getScore()+" "+pos.getX()+" "+(pos.getY()-1);
+                    try {
+                        comminication.sendUDP(this.addressUDP, scoreChange);
+                    }catch (IOException e){}
                 }
                 this.posJoueurNbr[pos.getX()][pos.getY()].pop();
                 if(this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty()){
@@ -103,9 +116,15 @@ public class Labyrinthe {
                 break;
             }else{
                 if(this.labyrinthe[pos.getX()][pos.getY()-1]==2){
-                    //TODO effacce fantome
+                    //effacce fantome
                     j.setScore( j.getScore() + 1 );
                     elimineFantome( new Position( pos.getX(), pos.getY() - 1 ) );
+                    //envoie message
+                    String scoreChange="SCORE "+j.getPseudo()+" "+j.getScore()+" "+pos.getX()+" "+(pos.getY()-1);
+                    try {
+                        comminication.sendUDP(this.addressUDP, scoreChange);
+                    }catch (IOException e){}
+
                 }
                 this.posJoueurNbr[pos.getX()][pos.getY()].pop();
                 if(this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty()){
@@ -129,9 +148,14 @@ public class Labyrinthe {
                 break;
             }else{
                 if(this.labyrinthe[pos.getX()+1][pos.getY()]==2){
-                    //TODO efface fantome
+                    //efface fantome
                     j.setScore( j.getScore() + 1 );
                     elimineFantome( new Position( pos.getX() + 1, pos.getY() ) );
+                    //envoie message
+                    String scoreChange="SCORE "+j.getPseudo()+" "+j.getScore()+" "+pos.getX()+" "+(pos.getY()-1);
+                    try {
+                        comminication.sendUDP(this.addressUDP, scoreChange);
+                    }catch (IOException e){}
                 }
                 this.posJoueurNbr[pos.getX()][pos.getY()].pop();
                 if(this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty()){
@@ -182,7 +206,7 @@ public class Labyrinthe {
         while (true) {
             if(drawTrace) {
                 this.print();
-                try {sleep(20);} catch (Exception e) {}
+                //try {sleep(20);} catch (Exception e) {}
             }
             this.labyrinthe[currentPos.getX()][currentPos.getY()] = 0;
             path.add(new Position(currentPos.getX(),currentPos.getY()));
@@ -278,7 +302,7 @@ public class Labyrinthe {
     //fantomes
     public synchronized boolean fantomeMove(){
         int positionNotNull=0;
-        Message comminication=new Message();
+
         for (Fantome f : this.fantomes) {
             int index=random.nextInt(path.size());
             if (f.getPosition() != null) {
@@ -299,21 +323,27 @@ public class Labyrinthe {
             }
         }
         return positionNotNull!=0;
-
     }
     public synchronized void elimineFantome(Position pos){
         System.out.println("elimination procces");
         int nbrFantome=0;
         for(Fantome f:fantomes){
             if(f.getPosition()!=null) {
-                nbrFantome+=1;
+
                 if (f.getPosition().equalsTo(pos)) {
                     f.elimine();
+                }else{
+                    nbrFantome+=1;
                 }
             }
         }
-        if(nbrFantome==1){
-            System.out.println("END OF G--A--M--E-----");
+        System.out.println("nbrFantome: "+nbrFantome);
+
+        if(nbrFantome==0){
+            //System.out.println("END OF G--A--M--E-----\n");
+            this.inGame=false;
+            Game.sleep=false;
+            notify();
             //TODO END OF GAME
         }
     }
@@ -440,8 +470,16 @@ public class Labyrinthe {
     public int[][] getLabyrinthe() {
         return labyrinthe;
     }
-
     public int getNbFantomes(){
         return fantomes.length;
     }
+    public boolean isInGame(){
+        return this.inGame;
+    }
+    public void retireJoueurs(){
+        for(Joueur j:joueurs){
+            j.getPartie().retirerJoueur(j);
+        }
+    }
+
 }
