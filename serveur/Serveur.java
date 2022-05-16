@@ -29,7 +29,7 @@ public class Serveur implements Runnable {
 
 
 			while( true ) { //boucle pour commande
-				Thread.sleep( 1000 );
+				//Thread.sleep( 1000 );
 				String x = null;
 				try {
 					x = Utils.lecture2( br );

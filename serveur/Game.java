@@ -100,9 +100,8 @@ public class Game {
 						if(joueurs[j]!=null){
 							if(joueurs[j].getScore()>gagnant.getScore()){
 								gagnant=joueurs[j];
-
-									communication.sendUDP(lab.addressUDP,"TOPPL "+gagnant.getPseudo()+" "+gagnant.getScore()+"+++");
-
+								communication.sendUDP(lab.addressUDP,"TOPPL "+gagnant.getPseudo()+" "+gagnant.getScore()+"+++");
+								joueurs[j].getSocket().close();
 								joueurs[j]=null;
 							}
 						}

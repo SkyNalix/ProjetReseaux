@@ -159,7 +159,6 @@ public class Partie {
 				}
 			}
 		} ).start();
-
 	}
 
 	public static String getNbPartie() {
