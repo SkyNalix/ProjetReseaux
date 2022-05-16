@@ -27,7 +27,7 @@ public class Labyrinthe {
     private int hauteur, largeur;
     int[][] labyrinthe;
     boolean border = true;
-    Message comminication=new Message();
+    Message communication=new Message();
     public boolean drawTrace=false;//permet d'affiche le detail de la création
     ArrayList<Position> path;//tout position de chemin
     Deque<Integer>[][] posJoueurNbr;
@@ -61,7 +61,7 @@ public class Labyrinthe {
                     //envoie message
                     String scoreChange="SCORE "+j.getPseudo()+" "+j.getScore()+" "+pos.getX()+" "+(pos.getY()-1);
                     try {
-                        comminication.sendUDP(this.addressUDP, scoreChange);
+                        communication.sendUDP(this.addressUDP, scoreChange);
                     }catch (IOException e){}
                 }
                 this.posJoueurNbr[pos.getX()][pos.getY()].pop();
@@ -91,7 +91,7 @@ public class Labyrinthe {
                     //envoie message
                     String scoreChange="SCORE "+j.getPseudo()+" "+j.getScore()+" "+pos.getX()+" "+(pos.getY()-1);
                     try {
-                        comminication.sendUDP(this.addressUDP, scoreChange);
+                        communication.sendUDP(this.addressUDP, scoreChange);
                     }catch (IOException e){}
                 }
                 this.posJoueurNbr[pos.getX()][pos.getY()].pop();
@@ -122,7 +122,7 @@ public class Labyrinthe {
                     //envoie message
                     String scoreChange="SCORE "+j.getPseudo()+" "+j.getScore()+" "+pos.getX()+" "+(pos.getY()-1);
                     try {
-                        comminication.sendUDP(this.addressUDP, scoreChange);
+                        communication.sendUDP(this.addressUDP, scoreChange);
                     }catch (IOException e){}
 
                 }
@@ -154,7 +154,7 @@ public class Labyrinthe {
                     //envoie message
                     String scoreChange="SCORE "+j.getPseudo()+" "+j.getScore()+" "+pos.getX()+" "+(pos.getY()-1);
                     try {
-                        comminication.sendUDP(this.addressUDP, scoreChange);
+                        communication.sendUDP(this.addressUDP, scoreChange);
                     }catch (IOException e){}
                 }
                 this.posJoueurNbr[pos.getX()][pos.getY()].pop();
@@ -317,7 +317,7 @@ public class Labyrinthe {
                 //envoie message
                 try{
                     String fantomeSig="GHOST "+newPos.getX()+" "+newPos.getY()+"+++";
-                    comminication.sendUDP(this.addressUDP,fantomeSig);
+                    communication.sendUDP(this.addressUDP,fantomeSig);
                 }catch (IOException e){}
                 this.labyrinthe[newPos.getX()][newPos.getY()]=2;
             }

@@ -78,6 +78,7 @@ public class Game {
 			sendClassement();
 		} catch (IOException e) {}
 		display.dispose();
+		interrupted();
 
 	});
 	private int getNbrJoueur(){
