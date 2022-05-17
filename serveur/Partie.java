@@ -1,22 +1,21 @@
 package serveur;
 
-import serveur.labyrinthe.Labyrinthe;
-
 import java.io.*;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 public class Partie {
 
-
 	private final int id;
 	private final InetSocketAddress address; // ip et port multicast
-	private final ArrayList<Joueur> listeJoueur = new ArrayList<>();
+	private final LinkedList<Joueur> listeJoueur = new LinkedList<>();
 	private boolean lancer = false;
 	private Game game;
+	private final int hauteur = 10, largeur = 10;
 
 	public Partie() {
 		int id = 0;
@@ -44,18 +43,6 @@ public class Partie {
 		Serveur.listePartie.add( this );
 	}
 
-	public Joueur[] getArrayJoueur() {
-		Joueur[] a = new Joueur[this.listeJoueur.size()];
-		for( int i = 0; i < this.listeJoueur.size(); i++ ) {
-			a[i] = this.listeJoueur.get( i );
-		}
-		return a;
-	}
-
-	public void setGame( Game nouveau ) {
-		this.game = nouveau;
-	}
-
 	public Game getGame() {
 		return this.game;
 	}
@@ -72,11 +59,7 @@ public class Partie {
 		return this.id;
 	}
 
-	public void setLancer( boolean nouveau ) {
-		this.lancer = nouveau;
-	}
-
-	public ArrayList<Joueur> getListeJoueur() {
+	public LinkedList<Joueur> getListeJoueur() {
 		return this.listeJoueur;
 	}
 
@@ -104,27 +87,20 @@ public class Partie {
 	public void retirerJoueur( Joueur supr ) {
 		if( this.listeJoueur.contains( supr ) ) {
 			this.listeJoueur.remove( supr );
-			if( lancer )
+			if( game != null ) {
 				game.lab.getLabyrinthe()[supr.getPosition().getX()][supr.getPosition().getY()] = 0;
-				game.lab.setJoueurs(getArrayJoueur());
-				game.display.updateContent(game.lab.getLabyrinthe());
+				game.refresh();
+			}
 			if( getNbJoueur() == 0 ) {
-				if( this.game != null ) {
-					this.game.display.dispose();
-					this.game.go = false;
-				}
-				Serveur.listePartie.remove( this );
+				stopGame();
 			} else if( !lancer && tousPret() ) {
 				launchGame();
-				System.out.println( "tout le monde est prêt" );
 			}
-		} else {
-			System.out.println( "Joueur absent" );
 		}
 	}
 
 	public void listePartie( PrintWriter pw ) {
-		pw.write( "LIST! " + this.getID() + " " + this.listeJoueur.size() + "***" );
+		pw.write( "LIST! " + this.getID() + " " + Converter.int8ToHexString( this.listeJoueur.size() ) + "***" );
 		for( Joueur joueur : this.listeJoueur ) {
 			pw.write( "PLAYR " + joueur.getPseudo() + "***" );
 			pw.flush();
@@ -134,13 +110,13 @@ public class Partie {
 	public void launchGame() {
 		new Thread( () -> {
 			lancer = true;
-			game = new Game( new Labyrinthe( 10, 10, getArrayJoueur() ) );
+			game = new Game( this );
 
-			String s = String.format( "WELCO %d %d %d %d %s %d***",
+			String s = String.format( "WELCO %d %s %s %s %s %d***",
 									  getID(),
-									  getGame().lab.getHauteur(),
-									  getGame().lab.getLargeur(),
-									  getGame().lab.getNbFantomes(),
+									  Converter.int16ToHexString( getHauteur() ),
+									  Converter.int16ToHexString( getLargeur() ),
+									  Converter.int8ToHexString( getGame().lab.getNbFantomes() ),
 									  address.getHostName() + "#".repeat( 15 - address.getHostName().length() ),
 									  address.getPort() );
 			for( Joueur joueur : listeJoueur ) {
@@ -148,11 +124,10 @@ public class Partie {
 					PrintWriter pw = new PrintWriter( joueur.getSocket().getOutputStream() );
 					pw.write( s );
 					pw.flush();
-					String str_x = joueur.getPosition().getX() + "";
-					str_x = "0".repeat( 3 - str_x.length() ) + str_x;
-					String str_y = joueur.getPosition().getY() + "";
-					str_y = "0".repeat( 3 - str_y.length() ) + str_y;
-					pw.write( String.format( "POSIT %s %s %s***", joueur.getPseudo(), str_x, str_y ) );
+					pw.write( String.format( "POSIT %s %s %s***",
+											 joueur.getPseudo(),
+											 joueur.getPosition().getXStr(),
+											 joueur.getPosition().getYStr() ) );
 					pw.flush();
 				} catch( Exception e ) {
 					e.printStackTrace();
@@ -161,20 +136,39 @@ public class Partie {
 		} ).start();
 	}
 
-	public static String getNbPartie() {
+	public void stopGame() {
+		if( this.game != null ) {
+			game.sendRanking();
+			if( this.game.display != null )
+				this.game.display.dispose();
+			this.game.go = false;
+			for(Joueur j : listeJoueur) {
+				try {
+					j.getSocket().close();
+				} catch( IOException e ) {
+					throw new RuntimeException( e );
+				}
+			}
+		}
+		Serveur.listePartie.remove( this );
+	}
+
+	public static int getNbPartie() {
 		int nb = 0;
 		for( Partie partie : Serveur.listePartie ) {
 			if( !partie.lancer && partie.getNbJoueur() > 0 )
 				nb++;
 		}
-		return String.valueOf( nb );
+		return nb;
 	}
 
 	public static void envoyerListePartie( PrintWriter pw, ArrayList<Partie> liste ) {
 		try {
 			for( Partie partie : liste ) {
 				if( !partie.lancer && partie.getNbJoueur() > 0 ) {
-					pw.write( "OGAME " + partie.getID() + " " + partie.getNbJoueur() + "***" );
+					pw.write( String.format( "OGAME %s %s***",
+											 Converter.int8ToHexString( partie.getID() ),
+											 Converter.int8ToHexString( partie.getNbJoueur() ) ) );
 					pw.flush();
 				}
 			}
@@ -187,15 +181,13 @@ public class Partie {
 		String id_str = Utils.splitString( x )[1];
 		int id;
 		try {
-			id = Integer.parseInt( id_str );
+			id = Converter.uint8ToInt( id_str );
 		} catch( Exception e ) {
 			pw.write( "DUNNO***" ); pw.flush();
 			return;
 		}
-		System.out.println( "###### " + id );
 		for( Partie partie : Serveur.listePartie ) {
 			if( partie.getID() == id ) {
-				System.out.println( "found partie" );
 				partie.listePartie( pw );
 				return;
 			}
@@ -217,6 +209,14 @@ public class Partie {
 
 	public InetSocketAddress getAddress() {
 		return address;
+	}
+
+	public int getHauteur() {
+		return hauteur;
+	}
+
+	public int getLargeur() {
+		return largeur;
 	}
 
 }

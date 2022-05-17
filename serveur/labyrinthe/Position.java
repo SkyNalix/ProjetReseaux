@@ -24,4 +24,13 @@ public class Position {
     void setY(int y){
         this.y=y;
     }
+    public String getXStr() { // que pour l'affichage et envoi au client
+        String str = x - 1 + "";
+        return "0".repeat( 3 - str.length() ) + str;
+    }
+    public String getYStr() { // que pour l'affichage et envoi au client
+        String str = y - 1 + "";
+        return "0".repeat( 3 - str.length() ) + str;
+    }
+
 }

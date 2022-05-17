@@ -11,7 +11,6 @@ public class Fantome extends Personne{
         return true;
     }
     public synchronized void elimine(){
-        System.out.println("je suis eliminé");
         this.setPosition(null);
     }
 }

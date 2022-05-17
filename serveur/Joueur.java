@@ -50,6 +50,11 @@ public class Joueur extends Personne {
 		return score;
 	}
 
+	public String getScoreStr() { // que pour l'affichage et envoi au client
+		String str = score + "";
+		return "0".repeat( 4 - str.length() ) + str;
+	}
+
 	public void setScore( int score ) {
 		this.score = score;
 	}
@@ -67,9 +72,9 @@ public class Joueur extends Personne {
 		int port;
 		try {
 			port = Integer.parseInt( port_str );
-			for(int i =0 ; i < Serveur.listePartie.size();i++){
-				for(int j = 0; j < Serveur.listePartie.get(i).getListeJoueur().size();j++){
-					if(port == Serveur.listePartie.get(i).getListeJoueur().get(j).getPort()){
+			for( int i = 0; i < Serveur.listePartie.size(); i++ ) {
+				for( int j = 0; j < Serveur.listePartie.get( i ).getListeJoueur().size(); j++ ) {
+					if( port == Serveur.listePartie.get( i ).getListeJoueur().get( j ).getPort() ) {
 						return null;
 					}
 				}
@@ -79,7 +84,7 @@ public class Joueur extends Personne {
 		}
 		if( id.length() != 8 || port_str.length() != 4 )
 			return null;
-		Joueur joueur = new Joueur( id, socket,port);
+		Joueur joueur = new Joueur( id, socket, port );
 		Partie partie = new Partie();
 		partie.ajouterJoueur( joueur );
 		joueur.partie = partie;
@@ -99,14 +104,14 @@ public class Joueur extends Personne {
 		int partie_id;
 		try {
 			port = Integer.parseInt( port_str );
-			for(int i =0 ; i < Serveur.listePartie.size();i++){
-				for(int j = 0; j < Serveur.listePartie.get(i).getListeJoueur().size();j++){
-					if(port == Serveur.listePartie.get(i).getListeJoueur().get(j).getPort()){
+			for( int i = 0; i < Serveur.listePartie.size(); i++ ) {
+				for( int j = 0; j < Serveur.listePartie.get( i ).getListeJoueur().size(); j++ ) {
+					if( port == Serveur.listePartie.get( i ).getListeJoueur().get( j ).getPort() ) {
 						return null;
 					}
 				}
 			}
-			partie_id = Integer.parseInt( partie_id_str );
+			partie_id = Converter.uint8ToInt( partie_id_str );
 		} catch( Exception e ) {
 			return null;
 		}
@@ -114,11 +119,9 @@ public class Joueur extends Personne {
 		for( Partie partie : Serveur.listePartie ) {
 			if( partie.getID() == partie_id ) {
 				if( partie.ajouterJoueur( joueur ) ) {
-					System.out.println( "--- DEBUG joueur ajouté" );
 					joueur.partie = partie;
 					return joueur;
 				} else {
-					System.out.println( "--- DEBUG pas joueur ajouté" );
 					return null;
 				}
 			}
@@ -126,35 +129,33 @@ public class Joueur extends Personne {
 		return null; // partie non trouvée
 	}
 
-
-
 	public boolean chatter( String str ) {
-		
-		String[] tab = Utils.splitString(str);
+
+		String[] tab = Utils.splitString( str );
 		if( partie == null )
 			return false;
 		String id = tab[1];
 		String msg = "";
-		for(int i = 2;i < tab.length;i++){
+		for( int i = 2; i < tab.length; i++ ) {
 			msg += tab[i] + " ";
 		}
 
-		System.out.println( "id|" + id + "|");
+		System.out.println( "id|" + id + "|" );
 		for( Joueur joueur : partie.getListeJoueur() ) {
 			if( joueur.getPseudo().equals( id ) ) {
 				try {
 
 					//String s = "Envoi";
-					byte[] data = (this.getPseudo() + ": " + msg).getBytes();
+					byte[] data = ( this.getPseudo() + ": " + msg ).getBytes();
 					DatagramPacket paquet = new DatagramPacket( data, data.length,
 																joueur.socketAssocie.getInetAddress(),
 																joueur.port
 					);
 					DatagramSocket z = new DatagramSocket();
-					z.send(paquet);
+					z.send( paquet );
 					z.close();
 					//new DatagramSocket().send( paquet );
-					System.out.println("msg envoyé à " + joueur.getPseudo() + " sur " + joueur.getPort());
+					System.out.println( "msg envoyé à " + joueur.getPseudo() + " sur " + joueur.getPort() );
 					return true;
 				} catch( Exception e ) {
 					e.printStackTrace();
@@ -163,6 +164,6 @@ public class Joueur extends Personne {
 		}
 		return false;
 	}
-	
+
 
 }

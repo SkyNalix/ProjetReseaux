@@ -92,15 +92,15 @@ char *receive() {
     int stars_counter = 0;
     char c[2];
     while (while_continue) {
-        ssize_t tmp = recv(sock, c, 1, 0);
-        if (tmp <= 0) {
+        ssize_t sz = recv(sock, c, 1, 0);
+        if (sz <= 0) {
             if (while_continue)
                 closeConnection(EXIT_FAILURE, "recv");
             else
                 closeConnection(EXIT_SUCCESS, NULL);
         }
         c[1] = '\0';
-        if (strcmp(c, "*") == 0) {
+        if (strcmp(c, "*") == 0 || strcmp(c, "+") == 0) {
             if (stars_counter == 2) {
                 break;
             } else
@@ -221,12 +221,22 @@ void *multicastThread(void *arg) {
         pthread_exit((void *) EXIT_FAILURE);
     }
     char tampon[250];
+    char **multicast_tab;
+    int pos_classement = -1;
     while (while_continue) {
         ssize_t rec = recv(multicast_sock, tampon, 100, 0);
         if (rec == 0) continue;
         if (rec < 0) break;
         tampon[rec] = '\0';
-        print("[GLOBAL] %s", tampon);
+        splitString(tampon, &multicast_tab);
+        if (strcmp(multicast_tab[0], "CLASS") == 0) {
+            print("Partie terminee, voici le classement: ");
+        } else if (strcmp(multicast_tab[0], "TOPPL") == 0 && pos_classement >= 0) {
+            print("\t%d - %s, score: %d", pos_classement, multicast_tab[1], multicast_tab[2]);
+        } else if (strcmp(multicast_tab[0], "ENDGA") == 0) {
+            while_continue = 0;
+        } else
+            print("[GLOBAL] %s", tampon);
     }
     close(multicast_sock);
     pthread_exit(EXIT_SUCCESS);
@@ -273,20 +283,13 @@ int main(int argc, char **argv) {
             debug = 1;
     }
 
-//     to close sock when detecting CTRL+C or CTRL+Z
-    struct sigaction sig_action;
-    sig_action.sa_handler = sig_handler;
-    sig_action.sa_flags = 0;
-    sigaction(SIGINT, &sig_action, NULL);
-    sigaction(SIGTSTP, &sig_action, NULL);
-
     struct addrinfo *info;
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
-    int addrinfo = getaddrinfo("localhost", str_port, &hints, &info);
-    if (addrinfo != 0) {
+    int r = getaddrinfo("localhost", str_port, &hints, &info);
+    if (r != 0) {
         perror("addrinfo != 0");
         exit(EXIT_FAILURE);
     }
@@ -301,12 +304,19 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    int r = connect(sock, (struct sockaddr *) info->ai_addr, sizeof(struct sockaddr_in));
+    r = connect(sock, (struct sockaddr *) info->ai_addr, sizeof(struct sockaddr_in));
     if (r != 0) {
         close(sock);
         perror("connect");
         exit(EXIT_FAILURE);
     }
+
+//     to close sock when detecting CTRL+C or CTRL+Z
+    struct sigaction sig_action;
+    sig_action.sa_handler = sig_handler;
+    sig_action.sa_flags = 0;
+    sigaction(SIGINT, &sig_action, NULL);
+    sigaction(SIGTSTP, &sig_action, NULL);
 
     // L'affichage avec Ncurses
     struct _win_st *my_win = initscr();
@@ -400,7 +410,7 @@ int main(int argc, char **argv) {
             send(sock, mess, strlen(mess), 0);
             tmp = receive();
             if (strcmp(tmp, "DUNNO") == 0) {
-                print("DUNNO");
+                print("[ERROR] DUNNO");
             } else {
                 splitString(tmp, &tab);
 
@@ -426,7 +436,7 @@ int main(int argc, char **argv) {
                     splitString(receive(), &tab);
                     print("Ta position sur le plateau est (%s, %s)", tab[2], tab[3]);
                 } else
-                    print("DUNNO");
+                    print("[ERROR] DUNNO");
             }
         } else if (strcmp(buff, "UNREG") == 0) { // [UNREG***]
             if (!in_party) {
@@ -445,8 +455,10 @@ int main(int argc, char **argv) {
             if (strcmp(tab[0], "UNROK") == 0) { // [UNROK␣m***]
                 uint8_t m = strtoul(tab[1], NULL, 16);
                 print("Partie %d quitte", m);
+                in_game = 0;
+                in_party = 0;
             } else {
-                print("DUNNO");
+                print("[ERROR] DUNNO");
             }
         } else if (strcmp(buff, "SIZE?") == 0) { // [SIZE?␣m***]
             print("Entrez le numero de la partie");
@@ -463,7 +475,7 @@ int main(int argc, char **argv) {
                 uint16_t w = littleEndian16ToHost(strtoul(tab[3], NULL, 16));
                 print("La partie %d est de taille %dx%d", m, h, w);
             } else {
-                print("DUNNO");
+                print("[ERROR] DUNNO");
             }
         } else if (strcmp(buff, "LIST?") == 0) { // [LIST? m***]
             print("Entrez le numero de la partie");
@@ -478,13 +490,13 @@ int main(int argc, char **argv) {
             if (strcmp(tab[0], "LIST!") == 0) { // [LIST!␣m␣s***]
                 uint8_t m = strtoul(tab[1], NULL, 16);
                 uint8_t s = strtoul(tab[2], NULL, 16);
-                print("SIZE! %d %d", m, s);
+                print("Liste des joueurs dans la partie %d:", m);
                 for (int i = 0; i < s; ++i) {
                     splitString(receive(), &tab); // [PLAYR␣id***]
-                    print("PLAYR %s", tab[1]);
+                    print("\t- %s", tab[1]);
                 }
             } else {
-                print("DUNNO");
+                print("[ERROR] DUNNO");
             }
         } else if (strcmp(buff, "GAME?") == 0) { // [GAME? m***]
             strcpy(mess, "GAME?***");
@@ -525,16 +537,16 @@ int main(int argc, char **argv) {
 
             splitString(receive(), &tab);
             if (strcmp(tab[0], "MOVE!") == 0) { // [MOVE!␣x␣y***]
-                print("MOVE! %s %s", tab[1], tab[2]);
+                print("Vous etes maintenant a (%s, %s)", tab[1], tab[2]);
             } else if (strcmp(tab[0], "MOVEF") == 0) { // [MOVEF␣x␣y␣p***]
-                print("MOVEF %s %s %s", tab[1], tab[2], tab[3]);
+                print("Vous etes maintenant a (%s, %s)", tab[1], tab[2]);
+                print("Vous avez attrape un fantome! Votre score est %s", tab[3]);
             } else {
                 print("[ERROR] DUNNO");
             }
         } else if (strcmp(buff, "IQUIT") == 0) { // [IQUIT***]
             if (!in_party) {
-                print("[ERROR] Vous n'etes pas dans une partie");
-                continue;
+                break;
             }
             if (!in_game) {
                 print("[ERROR] La partie n'a pas encore commencee, essaye plutot UNREG");
@@ -610,28 +622,29 @@ int main(int argc, char **argv) {
                 print("[ERROR] Message non envoye");
             }
         } else {
-            int testMov=1;
-            if(strcmp(buff,"z")==0){
-                strcat(mess,"UPMOV");
-            }else if(strcmp(buff,"q")==0){
-                strcat(mess,"LEMOV");
-            }else if(strcmp(buff,"s")==0){
-                strcat(mess,"DOMOV");
-            }else if(strcmp(buff,"d")==0){
-                strcat(mess,"RIMOV");
-            }else{
-                testMov=0;
+            int testMov = 1;
+            if (strcmp(buff, "z") == 0) {
+                strcat(mess, "UPMOV");
+            } else if (strcmp(buff, "q") == 0) {
+                strcat(mess, "LEMOV");
+            } else if (strcmp(buff, "s") == 0) {
+                strcat(mess, "DOMOV");
+            } else if (strcmp(buff, "d") == 0) {
+                strcat(mess, "RIMOV");
+            } else {
+                testMov = 0;
                 print("[ERROR] Reessayez");
             }
-            if(testMov){
+            if (testMov) {
                 strcat(mess, " ");
                 strcat(mess, "001");
                 strcat(mess, "***");
                 send(sock, mess, strlen(mess), 0);
             }
-            
         }
     }
+    print("FIN, appuyez sur n'importe quelle touche pour fermer le jeu");
+    getch();
 
     closeConnection(EXIT_SUCCESS, NULL);
 }
