@@ -12,6 +12,7 @@
 
 #define BUFF_SIZE 200
 #define MESS_SIZE 300
+int localhost = 1;
 int debug = 0;
 int sock;
 char **tab;
@@ -250,7 +251,11 @@ void *multicastThread(void *arg) {
         print("[MULTICAST] ip = %s, port = %s", args[0], args[1]);
     int multicast_sock = socket(PF_INET, SOCK_DGRAM, 0);
     int ok = 1;
-    int r = setsockopt(multicast_sock, SOL_SOCKET, SO_REUSEPORT, &ok, sizeof(ok));
+    int r;
+    if (localhost)
+        r = setsockopt(multicast_sock, SOL_SOCKET, SO_REUSEPORT, &ok, sizeof(ok));
+    else
+        r = setsockopt(multicast_sock, SOL_SOCKET, SO_REUSEADDR, &ok, sizeof(ok));
     if (r != 0) {
         print("[ERROR] vous n'allez pas recevoir les messages globales");
         pthread_exit((void *) EXIT_FAILURE);
@@ -337,6 +342,7 @@ void *udpThread(void *arg) { //serveur udp pour recevoir message
 
 int main(int argc, char **argv) {
     char *str_port = "4243";
+    char address[100] = "localhost";
     if (argc >= 2) {
         char *error;
         int newport = (int) strtol(argv[1], &error, 10);
@@ -349,15 +355,20 @@ int main(int argc, char **argv) {
     for (int i = 0; i < argc; ++i) {
         if (strcmp(argv[i], "--debug") == 0) {
             debug = 1;
+        } else if (strncmp(argv[i], "--address=", 10) == 0) {
+            strcpy(address, argv[i] + 10);
+            if (strcmp(address, "localhost") != 0)
+                localhost = 0;
         }
     }
+    printf("%s\n", address);
 
     struct addrinfo *info;
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
-    int r = getaddrinfo("localhost", str_port, &hints, &info);
+    int r = getaddrinfo(address, str_port, &hints, &info);
     if (r != 0) {
         perror("addrinfo != 0");
         exit(EXIT_FAILURE);
