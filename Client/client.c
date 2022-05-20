@@ -408,14 +408,14 @@ int main(int argc, char **argv) {
     getGamesList(receive());  // [GAMES␣n***]
 
     char buff[BUFF_SIZE];
-    char mess[MESS_SIZE];
+    char tosend[MESS_SIZE];
     int in_party = 0;
     int in_game = 0; // est 1 que si in_party==1
     char *tmp;
 
     while (while_continue) {
         strcpy(buff, "");
-        strcpy(mess, "");
+        memset(tosend, 0, MESS_SIZE);
 
         print("Entrez le debut de la requete que vous voulez ecrire");
         if (readInput(buff) == -1) break;
@@ -434,11 +434,11 @@ int main(int argc, char **argv) {
             readInput(tmpPort);
             in_port_t port2 = (in_port_t) atoi(tmpPort);
 
-            sprintf(mess, "NEWPL %s %d***", id, port2);
+            sprintf(tosend, "NEWPL %s %d***", id, port2);
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
+                print("[DEBUG] envoi: '%s'", tosend);
 
-            send(sock, mess, strlen(mess), 0);
+            send(sock, tosend, strlen(tosend), 0);
             splitString(receive(), &tab);
             if (strcmp(tab[0], "REGOK") == 0) { // [REGOK␣m***]
                 int m = atoi(tab[1]);
@@ -463,13 +463,11 @@ int main(int argc, char **argv) {
             print("Entrez le numero de la partie");
             readInput(buff);
             uint8_t m = atoi(buff);
-            sprintf(mess, "REGIS %s %d %s***", id, port2, buff);
-            if (debug)
-                print("[DEBUG] envoi: 'REGIS %s %d %s***'", id, port2, buff);
-            sprintf(mess, "REGIS %s %d ", id, port2);
-            send(sock, mess, strlen(mess), 0);
-            send(sock, &m, sizeof(uint8_t), 0);
-            send(sock, "***", 3, 0);
+            sprintf(tosend, "REGIS %s %d ", id, port2);
+            memcpy(tosend+20, &m, sizeof(uint8_t));
+            memcpy(tosend+21, "***", sizeof(char)*3);
+            print("'%s'", tosend);
+            send(sock, tosend, 24,0);
             splitString(receive(), &tab);
             if (strcmp(tab[0], "REGOK") == 0) { //  [REGOK␣m***]
                 m = atoi(tab[1]);
@@ -488,10 +486,10 @@ int main(int argc, char **argv) {
                 print("[ERROR] La partie a deja commencee");
                 continue;
             }
-            strcpy(mess, "START***");
+            strcpy(tosend, "START***");
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
-            send(sock, mess, strlen(mess), 0);
+                print("[DEBUG] envoi: '%s'", tosend);
+            send(sock, tosend, strlen(tosend), 0);
             print("Vous etes pret, attente des autres joueurs");
             splitString(receive(), &tab);
 
@@ -531,10 +529,10 @@ int main(int argc, char **argv) {
                 print("[ERROR] La partie a deja commencee, essayez plutot IQUIT");
                 continue;
             }
-            strcpy(mess, "UNREG***");
+            strcpy(tosend, "UNREG***");
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
-            send(sock, mess, strlen(mess), 0);
+                print("[DEBUG] envoi: '%s'", tosend);
+            send(sock, tosend, strlen(tosend), 0);
             splitString(receive(), &tab);
             if (strcmp(tab[0], "UNROK") == 0) { // [UNROK␣m***]
                 uint8_t m = atoi(tab[1]);
@@ -551,9 +549,10 @@ int main(int argc, char **argv) {
 
             if (debug)
                 print("[DEBUG] envoi: 'SIZE? %d***'", num_partie);
-            send(sock, "SIZE? ", 6, 0);
-            send(sock, &num_partie, sizeof(uint8_t), 0);
-            send(sock, "***", 3, 0);
+            memcpy(tosend, "SIZE? ", sizeof(char)*6);
+            memcpy(tosend+6, &num_partie, sizeof(uint8_t));
+            memcpy(tosend+7, "***", sizeof(char)*3);
+            send(sock, tosend, sizeof(char)*10, 0);
 
             splitString(receive(), &tab);
             if (strcmp(tab[0], "SIZE!") == 0) { // [SIZE!␣m␣h␣w***]
@@ -569,12 +568,10 @@ int main(int argc, char **argv) {
             readInput(buff);
             uint8_t m = atoi(buff);
 
-            sprintf(mess, "LIST? %s***", buff);
-            if (debug)
-                print("[DEBUG] envoi: '%LIST? %d***'", m);
-            send(sock, "LIST? ", 6, 0);
-            send(sock, &m, sizeof(uint8_t), 0);
-            send(sock, "***", 3, 0);
+            memcpy(tosend, "LIST? ", 6);
+            memcpy(tosend+6, &m, sizeof(uint8_t));
+            memcpy(tosend+7, "***", 3);
+            send(sock, tosend, 10, 0);
 
             splitString(receive(), &tab);
             if (strcmp(tab[0], "LIST!") == 0) { // [LIST!␣m␣s***]
@@ -591,10 +588,10 @@ int main(int argc, char **argv) {
                 print("[ERROR] DUNNO");
             }
         } else if (strcmp(buff, "GAME?") == 0) { // [GAME? m***]
-            strcpy(mess, "GAME?***");
+            strcpy(tosend, "GAME?***");
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
-            send(sock, mess, strlen(mess), 0);
+                print("[DEBUG] envoi: '%s'", tosend);
+            send(sock, tosend, strlen(tosend), 0);
             tmp = receive();
             if (strcmp(tmp, "DUNNO***") != 0) {
                 getGamesList(tmp); // [GAMES␣n***]
@@ -613,19 +610,19 @@ int main(int argc, char **argv) {
                 print("[ERROR] La partie n'a pas encore commencee");
                 continue;
             }
-            strcat(mess, buff);
-            strcat(mess, " ");
+            strcpy(tosend, buff);
+            strcat(tosend, " ");
             char pas[BUFF_SIZE];
             print("Entrez le nombre de pas");
             readInput(pas);
             for (int i = 0; i < 3 - ((int) strlen(pas)); i++) {
-                strcat(mess, "0");
+                strcat(tosend, "0");
             }
-            strcat(mess, pas);
-            strcat(mess, "***");
+            strcat(tosend, pas);
+            strcat(tosend, "***");
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
-            send(sock, mess, strlen(mess), 0);
+                print("[DEBUG] envoi: '%s'", tosend);
+            send(sock, tosend, strlen(tosend), 0);
 
             splitString(receive(), &tab);
             if (strcmp(tab[0], "MOVE!") == 0) { // [MOVE!␣x␣y***]
@@ -644,10 +641,10 @@ int main(int argc, char **argv) {
                 print("[ERROR] La partie n'a pas encore commencee, essayez plutot UNREG");
                 continue;
             }
-            strcpy(mess, "IQUIT***");
+            strcpy(tosend, "IQUIT***");
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
-            send(sock, mess, strlen(mess), 0);
+                print("[DEBUG] envoi: '%s'", tosend);
+            send(sock, tosend, strlen(tosend), 0);
             print("%s", receive()); // [GOBYE***]
             closeConnection(EXIT_SUCCESS, NULL);
         } else if (strcmp(buff, "GLIS?") == 0) { // [GLIS?***]
@@ -655,10 +652,10 @@ int main(int argc, char **argv) {
                 print("[ERROR] Vous n'etes pas dans une partie");
                 continue;
             }
-            strcpy(mess, "GLIS?***");
+            strcpy(tosend, "GLIS?***");
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
-            send(sock, mess, strlen(mess), 0);
+                print("[DEBUG] envoi: '%s'", tosend);
+            send(sock, tosend, strlen(tosend), 0);
             splitString(receive(), &tab);
             if (strcmp(tab[0], "DUNNO") == 0) {
                 print("[ERROR] DUNNO");
@@ -681,10 +678,10 @@ int main(int argc, char **argv) {
             }
             print("Entrez le message a envoyer a tous les joueurs");
             readInput(buff);
-            sprintf(mess, "MALL? %s***", buff);
+            sprintf(tosend, "MALL? %s***", buff);
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
-            send(sock, mess, strlen(mess), 0);
+                print("[DEBUG] envoi: '%s'", tosend);
+            send(sock, tosend, strlen(tosend), 0);
             splitString(receive(), &tab);
             if (strcmp(tab[0], "MALL!") == 0) { // [MALL!***]
                 print("Message envoye");
@@ -702,10 +699,10 @@ int main(int argc, char **argv) {
             readInput(id);
             print("Entrez le message");
             readInput(message);
-            sprintf(mess, "SEND? %s %s***", id, message);
+            sprintf(tosend, "SEND? %s %s***", id, message);
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
-            send(sock, mess, strlen(mess), 0);
+                print("[DEBUG] envoi: '%s'", tosend);
+            send(sock, tosend, strlen(tosend), 0);
             splitString(receive(), &tab);
             if (strcmp(tab[0], "SEND!") == 0) { //  [SEND!***]
                 print("Message envoye");
@@ -721,32 +718,32 @@ int main(int argc, char **argv) {
                 print("[ERROR] La partie a deja commencee, essayez plutot IQUIT");
                 continue;
             }
-            strcpy(mess, "DISC!***");
+            strcpy(tosend, "DISC!***");
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
-            send(sock, mess, strlen(mess), 0);
+                print("[DEBUG] envoi: '%s'", tosend);
+            send(sock, tosend, strlen(tosend), 0);
             print("%s", receive()); // [GOBYE***]
             closeConnection(EXIT_SUCCESS, NULL);
             closeConnection(EXIT_SUCCESS, NULL);
         } else {
             int testMov = 1;
             if (strcmp(buff, "z") == 0) {
-                strcat(mess, "UPMOV");
+                strcat(tosend, "UPMOV");
             } else if (strcmp(buff, "q") == 0) {
-                strcat(mess, "LEMOV");
+                strcat(tosend, "LEMOV");
             } else if (strcmp(buff, "s") == 0) {
-                strcat(mess, "DOMOV");
+                strcat(tosend, "DOMOV");
             } else if (strcmp(buff, "d") == 0) {
-                strcat(mess, "RIMOV");
+                strcat(tosend, "RIMOV");
             } else {
                 testMov = 0;
                 print("[ERROR] Reessayez");
             }
             if (testMov) {
-                strcat(mess, " 001***");
+                strcat(tosend, " 001***");
                 if (debug)
-                    print("[DEBUG] envoi: '%s'", mess);
-                send(sock, mess, strlen(mess), 0);
+                    print("[DEBUG] envoi: '%s'", tosend);
+                send(sock, tosend, strlen(tosend), 0);
 
                 splitString(receive(), &tab);
                 if (strcmp(tab[0], "MOVE!") == 0) { // [MOVE!␣x␣y***]
