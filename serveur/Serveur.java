@@ -6,10 +6,10 @@ import java.util.ArrayList;
 
 public class Serveur implements Runnable {
 
-	private final Socket socket;
+	private final Connexion connexion;
 
-	public Serveur( Socket socket ) {
-		this.socket = socket;
+	public Serveur( Connexion connexion ) {
+		this.connexion = connexion;
 	}
 
 	public static ArrayList<Partie> listePartie = new ArrayList<>();
@@ -17,250 +17,246 @@ public class Serveur implements Runnable {
 	@Override
 	public void run() {
 		try {
-			BufferedReader br = new BufferedReader( new InputStreamReader( this.socket.getInputStream() ) );
-			PrintWriter pw = new PrintWriter( this.socket.getOutputStream() );
-			//envoie des listes de partie
-			pw.write( "GAMES " + Converter.int8ToHexString( Partie.getNbPartie() ) + "***" );
-			pw.flush();
-			//envoie liste partie avec id
-			Partie.envoyerListePartie( pw, listePartie );
+
+			//connexione des listes de partie
+			Partie.envoyerListePartie( connexion );
 
 			Joueur joueur = null;
 
-
 			while( true ) { //boucle pour commande
-				//Thread.sleep( 1000 );
 				String x = null;
 				try {
-					x = Utils.lecture2( br );
-				} catch( SocketException e ) {
-					if( joueur != null ) {
-						joueur.getPartie().retirerJoueur( joueur );
-						return;
-					}
+					x = connexion.lire();
 				} catch( Exception e ) {
 					e.printStackTrace();
 				}
-				if( this.socket.isClosed() ) {
+				if( x == null || this.connexion.socket.isClosed() ) {
+					if( joueur != null ) {
+						System.out.println( "|" + joueur.getPseudo() + " has disconnected|" );
+						joueur.getPartie().retirerJoueur( joueur );
+					}
 					return;
 				}
-				if( x == null ) continue;
 
 				System.out.println( "|" + x + "|" );
-
-				if( x.equals( "GAME?***" ) ) { //GAMES*** affiche le nb de partie non lancé
-					pw.write( "GAMES " + Converter.int8ToHexString( Partie.getNbPartie() ) + "***" ); pw.flush();
-					Partie.envoyerListePartie( pw, listePartie );
-				} else if( x.startsWith( "NEWPL" ) && x.endsWith( "***" ) ) {
-					if( joueur != null ) {
-						pw.write( "REGNO***" ); pw.flush();
-					} else {
-						joueur = Joueur.newpl( this.socket, x );
-
-						if( joueur == null ) {
-							pw.write( "REGNO***" ); pw.flush();
+				try {
+					if( x.equals( "GAME?***" ) ) { //GAMES*** affiche le nb de partie non lancé
+						Partie.envoyerListePartie( connexion );
+					} else if( x.startsWith( "NEWPL" ) && x.endsWith( "***" ) ) {
+						if( joueur != null ) {
+							connexion.write( Converter.convert( "REGNO***" ) );
 						} else {
-							pw.write( "REGOK " + Converter.int8ToHexString( joueur.getPartie().getID() ) + "***" ); pw.flush();
+							joueur = Message.newpl( connexion, x );
+
+							if( joueur == null ) {
+								connexion.write( Converter.convert( "REGNO***" ) );
+							} else {
+								connexion.write( Converter.convert( "REGOK",
+																	new Nombre( joueur.getPartie().getID(), 1 )
+										  , "***" ) );
+
+							}
 						}
-					}
 
-				} else if( x.startsWith( "REGIS" ) && x.endsWith( "***" ) && joueur == null ) {
-					joueur = Joueur.rejoindrePartie( this.socket, x );
-					if( joueur != null ) {  //REGIS id port m***
-						pw.write( "REGOK " + Converter.int8ToHexString( joueur.getPartie().getID() ) + "***" ); pw.flush();
-					} else {
-						pw.write( "REGNO***" ); pw.flush();
-					}
+					} else if( x.startsWith( "REGIS" ) && x.endsWith( "***" ) && joueur == null ) {
+						joueur = Message.regis( connexion, x );
+						if( joueur != null ) {  //REGIS id port m***
+							connexion.write( Converter.convert( "REGOK", new Nombre( joueur.getPartie().getID(), 1 ), "***" ) );
+						} else {
+							connexion.write( Converter.convert( "REGNO***" ) );
+						}
+					} else if( x.equals( "UNREG***" ) && joueur != null ) { //UNREG*** quitte la partie
+						connexion.write( Converter.convert( "UNROK",
+															new Nombre( joueur.getPartie().getID(), 1 ), "***" ) );
 
-				} else if( x.equals( "UNREG***" ) && joueur != null ) { //UNREG*** quitte la partie
-					pw.write( "UNROK" + " " +  Converter.int8ToHexString(joueur.getPartie().getID()) + "***" ); pw.flush();
-					joueur.getPartie().retirerJoueur( joueur );
-					joueur = null;
-				} else if( x.equals( "START***" ) && joueur != null ) { //START*** bloque dans la game,attends le lancement
-					joueur.setReady( true );
-					System.out.println( joueur.getPseudo() + " est prêt" );
-					if( joueur.getPartie().tousPret() ) {
-						joueur.getPartie().launchGame();
-					}
-
-				} else if( x.startsWith( "LIST?" ) && x.endsWith( "***" ) ) { //LIST? numPartie*** affiche les joueurs de la
-					Partie.listePartie( x, pw );                      // partie demandé
-
-				} else if( x.startsWith( "SEND?" ) && x.endsWith( "***" ) && joueur != null ) {
-					if( joueur.chatter( x ) ) {
-						pw.write( "SEND!***" ); pw.flush();
-					} else {
-						pw.write( "NSEND!***" ); pw.flush();
-					}
-
-				} else if( x.startsWith( "DISC!" ) && x.endsWith( "***" ) && joueur == null ) { // se deconnecte
-					socket.close();
-					return;
-				} else if( x.startsWith( "SETPS" ) && x.endsWith( "***" ) && joueur != null && !joueur.getReady() ) {//envie de changer de pseudo
-					x = x.substring( 6, x.length() - 3 );
-					if( x.length() != 8 ) {
-						pw.write( "REGNO***" );
-						pw.flush();
-					} else {
-						joueur.setPseudo( x );
-					}
-				} else if( x.equals( "-1" ) ) {//si le joueur a crash
-					if( joueur != null ) {
 						joueur.getPartie().retirerJoueur( joueur );
-						System.out.println( "|" + joueur.getPseudo() + " has disconnected|" );
-					}
-					return;
-				} else if( x.startsWith( "SIZE? " ) && x.endsWith( "***" ) ) {
-					int m;
-					try {
-						m = Converter.uint8ToInt( Utils.splitString( x )[1] );
-					} catch( Exception e ) {
-						pw.write( "DUNNO***" ); pw.flush();
-						continue;
-					}
-					Partie p = null;
-					for( Partie partie : listePartie ) {
-						if( m == partie.getID() )
-							p = partie;
-					}
+						joueur = null;
+					} else if( x.equals( "START***" ) && joueur != null ) {
+						joueur.setReady( true );
+						if( joueur.getPartie().tousPret() ) {
+							joueur.getPartie().launchGame();
+						}
+					} else if( x.startsWith( "LIST?" ) && x.endsWith( "***" ) ) { //LIST? numPartie*** affiche les joueurs de la
+						Message.list( x, connexion );                      // partie demandé
 
-					if( p == null ) {
-						pw.write( "DUNNO***" ); pw.flush();
+					} else if( x.startsWith( "SEND?" ) && x.endsWith( "***" ) && joueur != null ) {
+						if( joueur.chatter( x ) ) {
+							connexion.write( Converter.convert( "SEND!***" ) );
+						} else {
+							connexion.write( Converter.convert( "NSEND***" ) );
+						}
+
+					} else if( x.startsWith( "DISC!" ) && x.endsWith( "***" ) && joueur == null ) { // se deconnecte
+						connexion.write( Converter.convert( "GOBYE***" ) );
+						connexion.socket.close();
+						return;
+					} else if( x.startsWith( "SIZE? " ) && x.endsWith( "***" ) ) {
+						int m;
+						try {
+							m = Integer.parseInt( Utils.splitString( x )[1] );
+						} catch( Exception e ) {
+							connexion.write( Converter.convert( "DUNNO***" ) );
+							continue;
+						}
+						Partie p = null;
+						for( Partie partie : listePartie ) {
+							if( m == partie.getID() )
+								p = partie;
+						}
+
+						if( p == null ) {
+							connexion.write( Converter.convert( "DUNNO***" ) );
+						} else {
+							connexion.write( Converter.convert( "SIZE!",
+																new Nombre( p.getID(), 1 ),
+																new Nombre( p.getHauteur(), 2 ),
+																new Nombre( p.getLargeur(), 2 ),
+																"***" ) );
+
+						}
+
+					} else if( x.startsWith( "UPMOV" ) && x.endsWith( "***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) { //mouvement
+						int pas;
+						try {
+							pas = Integer.parseInt( Utils.splitString( x )[1] );
+						} catch( Exception e ) {
+							connexion.write( Converter.convert( "DUNNO***" ) );
+							continue;
+						}
+						int score_avant = joueur.getScore();
+						joueur.getPartie().getGame().lab.moveUp( joueur, pas );
+						joueur.getPartie().getGame().refresh();
+						joueur.getPartie().getGame().posJoueursUpdate();
+
+						if( score_avant == joueur.getScore() ) {
+							connexion.write( Converter.convert( "MOVE!",
+																joueur.getPosition().getXStr(),
+																joueur.getPosition().getYStr(),
+																"***" ) );
+
+						} else {
+							connexion.write( Converter.convert( String.format( "MOVEF %s %s %s***",
+																			   joueur.getPosition().getXStr(),
+																			   joueur.getPosition().getYStr(),
+																			   joueur.getScoreStr() ) ) );
+
+						}
+
+					} else if( x.startsWith( "DOMOV" ) && x.endsWith( "***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) { //mouvement
+						int pas;
+						try {
+							pas = Integer.parseInt( Utils.splitString( x )[1] );
+						} catch( Exception e ) {
+							connexion.write( Converter.convert( "DUNNO***" ) );
+							continue;
+						}
+						int score_avant = joueur.getScore();
+						joueur.getPartie().getGame().lab.moveDown( joueur, pas );
+						joueur.getPartie().getGame().refresh();
+						joueur.getPartie().getGame().posJoueursUpdate();
+
+						if( score_avant == joueur.getScore() ) {
+							connexion.write( Converter.convert( String.format( "MOVE! %s %s***", joueur.getPosition().getXStr(), joueur.getPosition().getYStr() ) ) );
+
+						} else {
+							connexion.write( Converter.convert( String.format( "MOVEF %s %s %s***",
+																			   joueur.getPosition().getXStr(),
+																			   joueur.getPosition().getYStr(),
+																			   joueur.getScoreStr() ) ) );
+
+						}
+
+					} else if( x.startsWith( "RIMOV" ) && x.endsWith( "***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) { //mouvement
+						int pas;
+						try {
+							pas = Integer.parseInt( Utils.splitString( x )[1] );
+						} catch( Exception e ) {
+							connexion.write( Converter.convert( "DUNNO***" ) );
+							continue;
+						}
+						int score_avant = joueur.getScore();
+						joueur.getPartie().getGame().lab.moveRight( joueur, pas );
+						joueur.getPartie().getGame().refresh();
+						joueur.getPartie().getGame().posJoueursUpdate();
+
+						if( score_avant == joueur.getScore() ) {
+							connexion.write( Converter.convert( String.format( "MOVE! %s %s***",
+																			   joueur.getPosition().getXStr(),
+																			   joueur.getPosition().getYStr() ) ) );
+
+						} else {
+							connexion.write( Converter.convert( String.format( "MOVEF %s %s %s***",
+																			   joueur.getPosition().getXStr(),
+																			   joueur.getPosition().getYStr(),
+																			   joueur.getScoreStr() ) ) );
+
+						}
+					} else if( x.startsWith( "LEMOV" ) && x.endsWith( "***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) { //mouvement
+						int pas;
+						try {
+							pas = Integer.parseInt( Utils.splitString( x )[1] );
+						} catch( Exception e ) {
+							connexion.write( Converter.convert( "DUNNO***" ) );
+							continue;
+						}
+						int score_avant = joueur.getScore();
+						joueur.getPartie().getGame().lab.moveLeft( joueur, pas );
+						joueur.getPartie().getGame().refresh();
+						joueur.getPartie().getGame().posJoueursUpdate();
+
+						if( score_avant == joueur.getScore() ) {
+							connexion.write( Converter.convert( String.format( "MOVE! %s %s***",
+																			   joueur.getPosition().getXStr(),
+																			   joueur.getPosition().getYStr() ) ) );
+
+						}
+						// envoi de MOVEF se passe dans Labyrinthe.elimineFantome()
+
+					} else if( x.equals( "IQUIT***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) {
+						Partie p = joueur.getPartie();
+						p.retirerJoueur( joueur );
+						//end game
+						if( p.getNbJoueur() == 0 ) {
+							p.getGame().fantomeMove.interrupt();
+						}
+						connexion.write( Converter.convert( "GOBYE***" ) );
+						connexion.socket.close();
+						return;
+					} else if( x.equals( "GLIS?***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) {
+						connexion.write( Converter.convert(
+								  "GLIS!",
+								  new Nombre( joueur.getPartie().getNbJoueur(), 1 ),
+								  "***" ) );
+
+						for( Joueur j : joueur.getPartie().getListeJoueur() ) { // [GPLYR␣id␣x␣y␣p]
+							connexion.write( Converter.convert( String.format( "GPLYR %s %s %s %s***",
+																			   j.getPseudo(),
+																			   j.getPosition().getXStr(),
+																			   j.getPosition().getYStr(),
+																			   j.getScoreStr()
+																			 ) ) );
+
+						}
+					} else if( x.startsWith( "MALL?" ) && joueur != null && joueur.getPartie().getLancer() ) {
+						String str = x.substring( 6, x.length() - 3 );
+						Connexion.sendUDP( joueur.getPartie().getAddress(),
+										   Converter.convert( String.format( "MESSA %s %s+++",
+																			 joueur.getPseudo(), str ) ) );
+						connexion.write( Converter.convert( "MALL!***" ) );
 					} else {
-						pw.write( String.format( "SIZE! %d %s %s***", p.getID(),
-												 Converter.int16ToHexString( p.getHauteur() ),
-												 Converter.int16ToHexString( p.getLargeur() )
-											   ) );
-						pw.flush();
+						connexion.write( Converter.convert( "DUNNO***" ) );
 					}
-
-				} else if( x.startsWith( "UPMOV" ) && x.endsWith( "***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) { //mouvement
-					int pas;
-					try {
-						pas = Integer.parseInt( Utils.splitString( x )[1] );
-					} catch( Exception e ) {
-						pw.write( "DUNNO***" ); pw.flush();
-						continue;
-					}
-					int score_avant = joueur.getScore();
-					joueur.getPartie().getGame().moveUp( joueur, pas );
-					joueur.getPartie().getGame().posJoueursUpdate();
-
-					if( score_avant == joueur.getScore() ) {
-						pw.write( String.format( "MOVE! %s %s***", joueur.getPosition().getXStr(), joueur.getPosition().getYStr() ) );
-						pw.flush();
-					} else {
-						pw.write( String.format( "MOVEF %s %s %s***",
-												 joueur.getPosition().getXStr(),
-												 joueur.getPosition().getYStr(),
-												 joueur.getScoreStr() ) );
-						pw.flush();
-					}
-
-				} else if( x.startsWith( "DOMOV" ) && x.endsWith( "***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) { //mouvement
-					int pas;
-					try {
-						pas = Integer.parseInt( Utils.splitString( x )[1] );
-					} catch( Exception e ) {
-						pw.write( "DUNNO***" ); pw.flush();
-						continue;
-					}
-					int score_avant = joueur.getScore();
-					joueur.getPartie().getGame().moveDown( joueur, pas );
-					joueur.getPartie().getGame().posJoueursUpdate();
-
-					if( score_avant == joueur.getScore() ) {
-						pw.write( String.format( "MOVE! %s %s***", joueur.getPosition().getXStr(), joueur.getPosition().getYStr() ) );
-						pw.flush();
-					} else {
-						pw.write( String.format( "MOVEF %s %s %s***",
-												 joueur.getPosition().getXStr(),
-												 joueur.getPosition().getYStr(),
-												 joueur.getScoreStr() ) );
-						pw.flush();
-					}
-
-				} else if( x.startsWith( "RIMOV" ) && x.endsWith( "***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) { //mouvement
-					int pas;
-					try {
-						pas = Integer.parseInt( Utils.splitString( x )[1] );
-					} catch( Exception e ) {
-						pw.write( "DUNNO***" ); pw.flush();
-						continue;
-					}
-					int score_avant = joueur.getScore();
-					joueur.getPartie().getGame().moveRight( joueur, pas );
-					joueur.getPartie().getGame().posJoueursUpdate();
-
-					if( score_avant == joueur.getScore() ) {
-						pw.write( String.format( "MOVE! %s %s***",
-												 joueur.getPosition().getXStr(),
-												 joueur.getPosition().getYStr() ) );
-						pw.flush();
-					} else {
-						pw.write( String.format( "MOVEF %s %s %s***",
-												 joueur.getPosition().getXStr(),
-												 joueur.getPosition().getYStr(),
-												 joueur.getScoreStr() ) );
-						pw.flush();
-					}
-				} else if( x.startsWith( "LEMOV" ) && x.endsWith( "***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) { //mouvement
-					int pas;
-					try {
-						pas = Integer.parseInt( Utils.splitString( x )[1] );
-					} catch( Exception e ) {
-						pw.write( "DUNNO***" ); pw.flush();
-						continue;
-					}
-					int score_avant = joueur.getScore();
-					joueur.getPartie().getGame().moveLeft( joueur, pas );
-					joueur.getPartie().getGame().posJoueursUpdate();
-
-					if( score_avant == joueur.getScore() ) {
-						pw.write( String.format( "MOVE! %s %s***",
-												 joueur.getPosition().getXStr(),
-												 joueur.getPosition().getYStr() ) );
-						pw.flush();
-					} else {
-						pw.write( String.format( "MOVEF %s %s %s***",
-												 joueur.getPosition().getXStr(),
-												 joueur.getPosition().getYStr(),
-												 joueur.getScoreStr() ) );
-						pw.flush();
-					}
-
-				} else if( x.equals( "IQUIT***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) {
-					Partie p = joueur.getPartie();
-					p.retirerJoueur( joueur );
-					//end game
-					if( p.getNbJoueur() == 0 ) {
-						p.getGame().fantomeMove.interrupt();
-					}
-					pw.write( "GOBYE***" );
-					pw.flush();
-					socket.close();
-					return;
-				} else if( x.equals( "GLIS?***" ) && joueur != null && joueur.getPartie() != null && joueur.getPartie().getLancer() ) {
-					pw.write( String.format( "GLIS! %x***", joueur.getPartie().getNbJoueur() ) ); pw.flush();
-					for( Joueur joueur1 : joueur.getPartie().getListeJoueur() ) { // [GPLYR␣id␣x␣y␣p]
-						pw.write( String.format( "GPLYR %s %s %s %s***",
-												 joueur1.getPseudo(),
-												 joueur.getPosition().getXStr(),
-												 joueur.getPosition().getYStr(),
-												 joueur.getScoreStr()
-											   ) ); pw.flush();
-					}
-				} else if( x.startsWith( "MALL?" ) && joueur != null && joueur.getPartie().getLancer() ) {
-					String str = x.substring( 6, x.length() - 3 );
-					joueur.getPartie().multicastMessage( str );
-					pw.write( "MALL!***" ); pw.flush();
-				} else {
-					pw.write( "DUNNO***" ); pw.flush();
+				} catch( Exception ignored ) {
+					connexion.write( Converter.convert( "DUNNO***" ) );
 				}
 			}
 
+		} catch( SocketException ignored ) {
 		} catch( Exception e ) {
-			e.printStackTrace();
+			try {
+				connexion.socket.close();
+			} catch( IOException ignored ) {
+			}
 		}
 	}
 
@@ -276,9 +272,9 @@ public class Serveur implements Runnable {
 		}
 
 		try {
-			Joueur j1 = new Joueur( "joueur01", null, 4242 );
-			Joueur j2 = new Joueur( "joueur02", null, 4243 );
-			Joueur j3 = new Joueur( "joueur03", null, 4244 );
+			Joueur j1 = new Joueur( null, "joueur01", 4242 );
+			Joueur j2 = new Joueur( null, "joueur02", 4243 );
+			Joueur j3 = new Joueur( null, "joueur03", 4244 );
 
 			j1.setReady( true );
 			j2.setReady( true );
@@ -301,9 +297,14 @@ public class Serveur implements Runnable {
 			System.out.println( "lancé sur le port " + port );
 			while( true ) {
 				Socket socket = servSocket.accept();
-				Thread t = new Thread( new Serveur( socket ) );
-				synchronized( t ) {
-					t.start();
+				try {
+					Serveur serveurRunnable = new Serveur( new Connexion( socket ) );
+					Thread t = new Thread( serveurRunnable );
+					synchronized( t ) {
+						t.start();
+					}
+				} catch( IOException e ) {
+					socket.close();
 				}
 			}
 		} catch( Exception e ) {

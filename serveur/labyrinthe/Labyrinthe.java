@@ -11,15 +11,17 @@ package serveur.labyrinthe;
 import java.io.IOException;
 import java.util.*;
 
-import serveur.Game;
+import serveur.Connexion;
+import serveur.Converter;
+import serveur.Jeu;
 import serveur.Joueur;
 
 public class Labyrinthe {
 
 	private static final Random random = new Random();
-	public Game game;
+	public Jeu jeu;
 	private final LinkedList<Joueur> joueurs;
-	private Fantome[] fantomes;
+	private LinkedList<Fantome> fantomes = new LinkedList<>();
 	private int hauteur, largeur; // ceux là comptent aussi la bordure! ne pas envoyer au client
 	int[][] labyrinthe;
 	boolean border = true;
@@ -27,18 +29,18 @@ public class Labyrinthe {
 	Deque<Integer>[][] posJoueurNbr;
 
 	@SuppressWarnings( "unchecked" )
-	public Labyrinthe( Game game ) {
-		this.hauteur = game.partie.getHauteur();
-		this.largeur = game.partie.getLargeur();
+	public Labyrinthe( Jeu jeu ) {
+		this.hauteur = jeu.partie.getHauteur();
+		this.largeur = jeu.partie.getLargeur();
 		this.labyrinthe = new int[hauteur][largeur];
 		this.path = new ArrayList<>();
-		this.game = game;
-		this.joueurs = game.partie.getListeJoueur();
+		this.jeu = jeu;
+		this.joueurs = jeu.partie.getListeJoueur();
 		this.posJoueurNbr = new ArrayDeque[hauteur][largeur];
 		init( false );
 	}
 
-	public synchronized void moveUp( Joueur j, int pas ) {
+	public synchronized void moveUp( Joueur j, int pas ) throws IOException {
 		Position pos = j.getPosition();
 		for( int i = 0; i < pas; i++ ) {
 			if( this.labyrinthe[pos.getX() - 1][pos.getY()] == 1 || this.labyrinthe[pos.getX() - 1][pos.getY()] == -1 ) {
@@ -46,10 +48,10 @@ public class Labyrinthe {
 			} else {
 				if( this.labyrinthe[pos.getX() - 1][pos.getY()] == 2 ) {
 					//retire fantome
-					elimineFantome( new Position( pos.getX() - 1, pos.getY() ) );
+					elimineFantome( j, new Position( pos.getX() - 1, pos.getY() ) );
 					j.setScore( j.getScore() + 1 );
 					//envoie message
-					game.playerCoughtGhost( j );
+					jeu.playerCoughtGhost( j );
 				}
 				this.posJoueurNbr[pos.getX()][pos.getY()].pop();
 				if( this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty() ) {
@@ -61,10 +63,12 @@ public class Labyrinthe {
 		}
 		this.labyrinthe[pos.getX()][pos.getY()] = 3;
 		j.setPosition( pos );
+		if( getNbFantomes() == 0 )
+			jeu.partie.supprPartie();
 		print();
 	}
 
-	public synchronized void moveRight( Joueur j, int pas ) {
+	public synchronized void moveRight( Joueur j, int pas ) throws IOException {
 		Position pos = j.getPosition();
 		for( int i = 0; i < pas; i++ ) {
 			if( this.labyrinthe[pos.getX()][pos.getY() + 1] == 1 || this.labyrinthe[pos.getX()][pos.getY() + 1] == -1 ) {
@@ -73,9 +77,9 @@ public class Labyrinthe {
 				if( this.labyrinthe[pos.getX()][pos.getY() + 1] == 2 ) {
 					//retire Fantome
 					j.setScore( j.getScore() + 1 );
-					elimineFantome( new Position( pos.getX(), pos.getY() + 1 ) );
+					elimineFantome( j, new Position( pos.getX(), pos.getY() + 1 ) );
 					//envoie message
-					game.playerCoughtGhost( j );
+					jeu.playerCoughtGhost( j );
 				}
 				this.posJoueurNbr[pos.getX()][pos.getY()].pop();
 				if( this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty() ) {
@@ -88,10 +92,12 @@ public class Labyrinthe {
 		}
 		this.labyrinthe[pos.getX()][pos.getY()] = 3;
 		j.setPosition( pos );
+		if( getNbFantomes() == 0 )
+			jeu.partie.supprPartie();
 		print();
 	}
 
-	public synchronized void moveLeft( Joueur j, int pas ) {
+	public synchronized void moveLeft( Joueur j, int pas ) throws IOException {
 		Position pos = j.getPosition();
 		for( int i = 0; i < pas; i++ ) {
 			if( this.labyrinthe[pos.getX()][pos.getY() - 1] == 1 || this.labyrinthe[pos.getX()][pos.getY() - 1] == -1 ) {
@@ -100,9 +106,9 @@ public class Labyrinthe {
 				if( this.labyrinthe[pos.getX()][pos.getY() - 1] == 2 ) {
 					//effacce fantome
 					j.setScore( j.getScore() + 1 );
-					elimineFantome( new Position( pos.getX(), pos.getY() - 1 ) );
+					elimineFantome( j, new Position( pos.getX(), pos.getY() - 1 ) );
 					//envoie message
-					game.playerCoughtGhost( j );
+					jeu.playerCoughtGhost( j );
 				}
 				this.posJoueurNbr[pos.getX()][pos.getY()].pop();
 				if( this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty() ) {
@@ -115,10 +121,12 @@ public class Labyrinthe {
 
 		j.setPosition( pos );
 		this.labyrinthe[pos.getX()][pos.getY()] = 3;
+		if( getNbFantomes() == 0 )
+			jeu.partie.supprPartie();
 		print();
 	}
 
-	public synchronized void moveDown( Joueur j, int pas ) {
+	public synchronized void moveDown( Joueur j, int pas ) throws IOException {
 		Position pos = j.getPosition();
 		for( int i = 0; i < pas; i++ ) {
 			if( this.labyrinthe[pos.getX() + 1][pos.getY()] == 1 || this.labyrinthe[pos.getX() + 1][pos.getY()] == -1 ) {
@@ -127,9 +135,9 @@ public class Labyrinthe {
 				if( this.labyrinthe[pos.getX() + 1][pos.getY()] == 2 ) {
 					//efface fantome
 					j.setScore( j.getScore() + 1 );
-					elimineFantome( new Position( pos.getX() + 1, pos.getY() ) );
+					elimineFantome( j, new Position( pos.getX() + 1, pos.getY() ) );
 					//envoie message
-					game.playerCoughtGhost( j );
+					jeu.playerCoughtGhost( j );
 				}
 				this.posJoueurNbr[pos.getX()][pos.getY()].pop();
 				if( this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty() ) {
@@ -142,6 +150,8 @@ public class Labyrinthe {
 		}
 		j.setPosition( pos );
 		this.labyrinthe[pos.getX()][pos.getY()] = 3;
+		if( getNbFantomes() == 0 )
+			jeu.partie.supprPartie();
 		print();
 	}
 
@@ -160,8 +170,8 @@ public class Labyrinthe {
 			}
 		}
 		make( randomInitPos );
+		fantomeMove();
 		initPosJoueurs();
-		initPosFantome();
 		initDeque();
 	}
 
@@ -282,7 +292,7 @@ public class Labyrinthe {
 		for( Joueur j : joueurs ) {
 			int rand = random.nextInt( this.path.size() );
 			Position pos = this.path.get( rand );
-			while( path_size > joueurs_size && labyrinthe[pos.getX()][pos.getY()] == 3 ) {
+			while( path_size > joueurs_size && labyrinthe[pos.getX()][pos.getY()] != 0 ) {
 				rand = random.nextInt( this.path.size() );
 				pos = this.path.get( rand );
 			}
@@ -293,66 +303,54 @@ public class Labyrinthe {
 
 	//fantomes
 	public synchronized boolean fantomeMove() {
-		int positionNotNull = 0;
-
+		if( fantomes.size() == 0 ) {
+			for( int i = 0; i < joueurs.size(); i++ ) {
+				fantomes.add( new Fantome() );
+			}
+		}
 		for( Fantome f : this.fantomes ) {
 			int index = random.nextInt( path.size() );
 			if( f.getPosition() != null ) {
-				positionNotNull += 1;
 				this.labyrinthe[f.getPosition().getX()][f.getPosition().getY()] = 0;
-				Position newPos = path.get( index );
-				while( this.labyrinthe[newPos.getX()][newPos.getY()] == 2 || this.labyrinthe[newPos.getX()][newPos.getY()] == 3 ) {
-					index = random.nextInt( this.path.size() );
-					newPos = this.path.get( index );
-				}
-				f.setPosition( newPos );
-				//envoie message
-				try {
-					String fantomeSig = "GHOST " + newPos.getX() + " " + newPos.getY() + "+++";
-					Message.sendUDP( game.partie.getAddress(), fantomeSig );
-				} catch( IOException ignored ) {
-				}
-				this.labyrinthe[newPos.getX()][newPos.getY()] = 2;
 			}
+			Position newPos = path.get( index );
+			int safe = 100;
+			while( safe >= 0 && this.labyrinthe[newPos.getX()][newPos.getY()] != 0 ) {
+				index = random.nextInt( this.path.size() );
+				newPos = this.path.get( index );
+				safe--;
+			}
+			if( safe < 0 )
+				return false;
+			f.setPosition( newPos );
+			//envoie message
+			try {
+				String fantomeSig = String.format( "GHOST %s %s+++", newPos.getXStr(), newPos.getYStr() );
+				Connexion.sendUDP( jeu.partie.getAddress(), Converter.convert( fantomeSig ) );
+			} catch( IOException ignored ) {
+			}
+			this.labyrinthe[newPos.getX()][newPos.getY()] = 2;
 		}
-		return positionNotNull != 0;
+		return true;
 	}
 
-	public synchronized void elimineFantome( Position pos ) {
-		System.out.println( "elimination procces" );
-		int nbrFantome = 0;
+	public synchronized void elimineFantome( Joueur j, Position pos ) throws IOException {
+		LinkedList<Fantome> newFantomesList = new LinkedList<>();
 		for( Fantome f : fantomes ) {
 			if( f.getPosition() != null ) {
-
 				if( f.getPosition().equalsTo( pos ) ) {
 					f.elimine();
 				} else {
-					nbrFantome += 1;
+					newFantomesList.add( f );
 				}
 			}
 		}
-		System.out.println( "nbrFantome: " + nbrFantome );
-
-		if( nbrFantome == 0 ) {
-			//END
-			game.partie.stopGame();
-		}
-	}
-
-	public void initPosFantome() {
-		this.fantomes = new Fantome[joueurs.size()];
-		for( int i = 0; i < fantomes.length; i++ ) {
-			int index = random.nextInt( this.path.size() );
-			fantomes[i] = new Fantome();
-			Position newPos = this.path.get( index );
-			while( this.labyrinthe[newPos.getX()][newPos.getY()] == 2 || this.labyrinthe[newPos.getX()][newPos.getY()] == 3 ) {
-				index = random.nextInt( this.path.size() );
-				newPos = this.path.get( index );
-			}
-			fantomes[i].setPosition( newPos );
-			this.labyrinthe[newPos.getX()][newPos.getY()] = 2;
-
-		}
+		fantomes.clear();
+		fantomes = newFantomesList;
+		j.connexion.write( Converter.convert( String.format( "MOVEF %s %s %s***",
+															 pos.getXStr(),
+															 pos.getYStr(),
+															 j.getScoreStr() ) ) );
 	}
 
 	public static final String ANSI_RESET = "\u001B[0m";
@@ -363,7 +361,6 @@ public class Labyrinthe {
 
 		for( int i = 0; i < hauteur; i++ ) {
 			for( int j = 0; j < largeur; j++ ) {
-				//System.out.print(this.labyrinthe[i][j]==-1?"$ ":(this.labyrinthe[i][j]==1?"@ ":"  "));
 				if( this.labyrinthe[i][j] == -1 ) {
 					System.out.print( "$ " );
 				} else if( this.labyrinthe[i][j] == 1 ) {
@@ -373,7 +370,6 @@ public class Labyrinthe {
 				} else if( this.labyrinthe[i][j] == 2 ) {
 					System.out.print( ANSI_RED + "S " + ANSI_RESET );
 				} else {
-					//System.out.print("V ");
 					System.out.print( ANSI + "V " + ANSI_RESET );
 				}
 
@@ -417,7 +413,7 @@ public class Labyrinthe {
 	}
 
 	public int getNbFantomes() {
-		return fantomes.length;
+		return fantomes.size();
 	}
 
 }

@@ -13,15 +13,6 @@ public abstract class Personne {
         this.pseudo = pseudo;
     }
 
-    public Personne( Position position ) {
-        this.position = position;
-    }
-
-    public Personne( String pseudo, Position position ) {
-        this( pseudo );
-        this.position = position;
-    }
-
     public void setPosition( Position pos ) {
         this.position = pos;
     }
@@ -33,11 +24,5 @@ public abstract class Personne {
     public String getPseudo() {
         return this.pseudo;
     }
-
-    public void setPseudo( String pseudo ) {
-        this.pseudo = pseudo;
-    }
-
-    public abstract boolean isFantome();
 
 }

@@ -1,49 +1,66 @@
 package serveur;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.Arrays;
 
 public class Converter {
 
-	public static String int8ToHexString( int n ) {
-		return Integer.toHexString( Math.min( 255, n ) );
+	public static byte[] dunnoMessageByteArray() {
+		ByteBuffer bbuf = ByteBuffer.allocate( 8 );
+		bbuf.order( ByteOrder.BIG_ENDIAN );
+		bbuf.put( "DUNNO***".getBytes() );
+		return bbuf.array();
 	}
 
-	public static String int16ToHexString( int n ) {
-		byte[] b = ByteBuffer.allocate( 4 ).putInt( Math.min( 65535, n ) ).array();
-		String res = "";
-		boolean left_zero = true;
-		for( byte by : b ) {
-			String s =String.format( "%x", by );
-			if( !s.equals( "0" ) || !left_zero) {
-				res += s;
-				left_zero = false;
+
+	private static int[] calcSize( Object[] l ) {
+		int endian = 2; // 1 = little 2 = big;
+		int res = 0; for( int i = 0; i < l.length; i++ ) {
+			Object obj = l[i];
+			if( obj instanceof String ) {
+				res += ( (String) obj ).length();
+			} else if( obj instanceof Nombre ) {
+				Nombre nombre = (Nombre) obj;
+				if( nombre.n < 0 ) continue;
+				res += nombre.nbr_byte;
+			} if( i < l.length - 2 ) {
+				endian = 1;
+				res++;
 			}
+		} return new int[]{ endian, res };
+	}
+
+	public static byte[] convert( Object... l ) {
+		int[] info = calcSize( l );
+		ByteBuffer bb = ByteBuffer.allocate( info[1] );
+//		bb.order( info[0] == 1 ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN );
+		bb.order( ByteOrder.BIG_ENDIAN );
+		for( int i = 0; i < l.length; i++ ) {
+			Object obj = l[i];
+			if( obj instanceof String ) {
+				bb.put( ( (String) obj ).getBytes() );
+			} else if( obj instanceof Nombre ) {
+				Nombre nombre = (Nombre) obj;
+				if( nombre.nbr_byte == 1 ) {
+					bb.put( (byte) nombre.n );
+				} else if( nombre.nbr_byte == 2 ) {
+					bb.put( intToTwoBytes( nombre.n ) );
+				}
+			}
+			if( i < l.length - 2 )
+				bb.put( (byte) ' ' );
 		}
-		return res;
+		return bb.array();
 	}
 
-	public static byte[] hexStringToByteArray(String str) {
-		String s = str;
-		if( s.length() % 2 == 1 )
-			s = "0" + s;
-		int len = s.length();
-		byte[] data = new byte[len / 2];
-		for (int i = 0; i < len; i += 2) {
-			data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
-								  + Character.digit(s.charAt(i+1), 16));
-		}
-		return data;
+
+	static byte[] intToTwoBytes( int i ) {
+		return new byte[]{
+				  (byte) ( ( i >>> 8 ) & 0xFF ),
+				  (byte) ( i & 0xFF )
+		};
 	}
 
-	public static int uint8ToInt(String hex) {
-		return hexStringToByteArray(hex)[0] & 0xFF;
-	}
-
-	public static int uint16ToInt(String hex) {
-		byte[] b = hexStringToByteArray( hex );
-		if( b.length == 1)
-			return b[0] & 0xFF;
-		return ((b[0] << 8) & 0x0000ff00) | (b[1] & 0x000000ff);
-	}
 
 }
