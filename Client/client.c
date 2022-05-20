@@ -11,11 +11,10 @@
 #include <signal.h>
 
 #define BUFF_SIZE 200
-#define MESS_SIZE 1000
+#define MESS_SIZE 300
 int debug = 0;
 int sock;
 char **tab;
-char *tmp;
 pthread_t multicast_thread;
 pthread_t udp_thread;
 
@@ -85,33 +84,83 @@ void closeConnection(int exitCode, char *error) {
     exit(exitCode);
 }
 
+uint8_t stringToUint8(const char *s) {
+    if (strcmp(s, "0") == 0)
+        return 0;
+    else
+        return s[0];
+}
+
+uint16_t stringToUint16(const char *s) {
+    if (strcmp(s, "0") == 0)
+        return 0;
+    else
+        return (unsigned char) (s[0] << 8) | s[1];
+}
+
+char *convertString(char *s, ssize_t len) {
+    char *res = malloc(40);
+    if (len == 1) {
+        sprintf(res, " %d", stringToUint8(s));
+    } else if (len == 2) {
+        sprintf(res, " %d", stringToUint16(s));
+    } else {
+        sprintf(res, " %s", s);
+    }
+    return res;
+}
+
 char *receive() {
     char *buff = malloc(BUFF_SIZE);
     buff = strcpy(buff, "");
     int size = 0;
     int stars_counter = 0;
-    char c[2];
+    char word_buffer[40];
+    strcpy(word_buffer, "");
+    int word_length = 0;
+
+    ssize_t sz = recv(sock, buff, 5, 0);
+    buff[sz] = '\0';
+    size += (int) sz;
+
     while (while_continue) {
-        ssize_t sz = recv(sock, c, 1, 0);
+        char c[2];
+        sz = recv(sock, c, 1, 0);
         if (sz <= 0) {
             if (while_continue)
                 closeConnection(EXIT_FAILURE, "recv");
             else
                 closeConnection(EXIT_SUCCESS, NULL);
         }
+        if (sz == 1 && c[0] == '\0') {
+            c[0] = '0';
+        }
         c[1] = '\0';
-        if (strcmp(c, "*") == 0 || strcmp(c, "+") == 0) {
+        if (c[0] == '*' || c[0] == '+') {
+
             if (stars_counter == 2) {
+                if (word_length > 0) {
+                    buff = strcat(buff, convertString(word_buffer, word_length));
+                }
+                size++;
                 break;
             } else
                 stars_counter++;
-        } else
-            strcat(buff, c);
+        } else if (c[0] == ' ') {
+            if (word_length > 0) {
+                buff = strcat(buff, convertString(word_buffer, word_length));
+                strcpy(word_buffer, "");
+                word_length = 0;
+            }
+        } else {
+            strcat(word_buffer, c);
+            word_length++;
+        }
         size++;
     }
-    buff[size] = '\0';
-    if (debug)
+    if (debug) {
         print("[DEBUG] recu: '%s'", buff);
+    }
     return buff;
 }
 
@@ -147,6 +196,8 @@ int splitString(char *str, char ***res) {
 ssize_t readInput(char *stockIci) {
     while (1) {
         int ch = getch();
+        if (!while_continue)
+            return -1;
         if (ch == ERR)
             return -1;
         if (max_y == print_y)
@@ -180,14 +231,15 @@ ssize_t readInput(char *stockIci) {
 
 void getGamesList(char *str) {
     splitString(str, &tab);
-    uint8_t n = strtoul(tab[1], NULL, 16);
+
+    int n = atoi(tab[1]);
 
     print("%d parties trouvees", n);
     for (int i = 0; i < n; ++i) {
         str = receive(); // [OGAME␣m␣s***]
         splitString(str, &tab);
-        uint8_t m = strtoul(tab[1], NULL, 16);
-        uint8_t s = strtoul(tab[2], NULL, 16);
+        int m = atoi(tab[1]);
+        int s = atoi(tab[2]);
         print("\tpartie numero %d, avec %d joueurs", m, s);
     }
 }
@@ -222,21 +274,29 @@ void *multicastThread(void *arg) {
     }
     char tampon[250];
     char **multicast_tab;
-    int pos_classement = -1;
     while (while_continue) {
         ssize_t rec = recv(multicast_sock, tampon, 100, 0);
-        if (rec == 0) continue;
+        if (rec < 3) continue;
         if (rec < 0) break;
-        tampon[rec] = '\0';
+        tampon[rec - 3] = '\0';
         splitString(tampon, &multicast_tab);
-        if (strcmp(multicast_tab[0], "CLASS") == 0) {
-            print("Partie terminee, voici le classement: ");
-        } else if (strcmp(multicast_tab[0], "TOPPL") == 0 && pos_classement >= 0) {
-            print("\t%d - %s, score: %d", pos_classement, multicast_tab[1], multicast_tab[2]);
+        if (debug)
+            print("[DEBUG MULTICAST] recu: '%s'", tampon);
+        if (strcmp(multicast_tab[0], "GHOST") == 0) {
+            print("Une fantome s'est deplace a (%s, %s)", multicast_tab[1], multicast_tab[2]);
         } else if (strcmp(multicast_tab[0], "ENDGA") == 0) {
+            print("Partie terminee, %s a gagne avec %s points", multicast_tab[1], multicast_tab[2]);
+            print("Appuyez sur n'importe quelle touche pour quitter");
             while_continue = 0;
-        } else
-            print("[GLOBAL] %s", tampon);
+            break;
+        } else if (strcmp(multicast_tab[0], "MESSA") == 0) {
+            char mess[200];
+            strncpy(mess, tampon + 15, rec - 18);
+            print("[GLOBAL] %s: %s", multicast_tab[1], mess);
+        } else if (strcmp(multicast_tab[0], "SCORE") == 0) {
+            print("Le joueur %s a attrape un fantome a (%s, %s) son score est %s",
+                  multicast_tab[1], multicast_tab[3], multicast_tab[4], multicast_tab[2]);
+        }
     }
     close(multicast_sock);
     pthread_exit(EXIT_SUCCESS);
@@ -257,12 +317,20 @@ void *udpThread(void *arg) { //serveur udp pour recevoir message
         pthread_exit((void *) EXIT_FAILURE);
     }
     char tampon[300];
+    char **udp_tab;
     while (while_continue) {
         ssize_t rec = recv(udp_sock, tampon, 299, 0);
-        if (rec == 0) continue;
+        if (rec < 3) continue;
         if (rec < 0) break;
-        tampon[rec] = '\0';
-        print("[PRIVE] %s", tampon);
+        tampon[rec - 3] = '\0';
+        splitString(tampon, &udp_tab);
+        if (debug)
+            print("[DEBUG UDP] recu: '%s'", tampon);
+        if (strcmp(udp_tab[0], "MESSP") == 0) {
+            char mess[200];
+            strncpy(mess, tampon + 15, rec - 18);
+            print("[PRIVE] %s: %s", udp_tab[1], mess);
+        }
     }
     pthread_exit(EXIT_SUCCESS);
 }
@@ -279,8 +347,9 @@ int main(int argc, char **argv) {
         }
     }
     for (int i = 0; i < argc; ++i) {
-        if (strcmp(argv[i], "--debug") == 0)
+        if (strcmp(argv[i], "--debug") == 0) {
             debug = 1;
+        }
     }
 
     struct addrinfo *info;
@@ -331,6 +400,7 @@ int main(int argc, char **argv) {
     char mess[MESS_SIZE];
     int in_party = 0;
     int in_game = 0; // est 1 que si in_party==1
+    char *tmp;
 
     while (while_continue) {
         strcpy(buff, "");
@@ -360,7 +430,7 @@ int main(int argc, char **argv) {
             send(sock, mess, strlen(mess), 0);
             splitString(receive(), &tab);
             if (strcmp(tab[0], "REGOK") == 0) { // [REGOK␣m***]
-                uint8_t m = strtoul(tab[1], NULL, 16);
+                int m = atoi(tab[1]);
                 print("Partie %d creee", m);
                 pthread_create(&udp_thread, NULL, udpThread, (void *) &port2);
                 in_party = 1;
@@ -372,23 +442,26 @@ int main(int argc, char **argv) {
                 print("[ERROR] Vous etes deja dans une partie");
                 continue;
             }
-            char id[BUFF_SIZE];
+            char id[9];
             print("Entrez votre id");
             readInput(id);
             print("Entrez votre port");
-            char tmpPort[BUFF_SIZE];
+            char tmpPort[5];
             readInput(tmpPort);
             in_port_t port2 = (in_port_t) atoi(tmpPort);
             print("Entrez le numero de la partie");
             readInput(buff);
-
+            uint8_t m = atoi(buff);
             sprintf(mess, "REGIS %s %d %s***", id, port2, buff);
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
+                print("[DEBUG] envoi: 'REGIS %s %d %s***'", id, port2, buff);
+            sprintf(mess, "REGIS %s %d ", id, port2);
             send(sock, mess, strlen(mess), 0);
+            send(sock, &m, sizeof(uint8_t), 0);
+            send(sock, "***", 3, 0);
             splitString(receive(), &tab);
             if (strcmp(tab[0], "REGOK") == 0) { //  [REGOK␣m***]
-                uint8_t m = strtoul(tab[1], NULL, 16);
+                m = atoi(tab[1]);
                 print("Partie %d rejoint", m);
                 pthread_create(&udp_thread, NULL, udpThread, (void *) &port2);
                 in_party = 1;
@@ -408,43 +481,43 @@ int main(int argc, char **argv) {
             if (debug)
                 print("[DEBUG] envoi: '%s'", mess);
             send(sock, mess, strlen(mess), 0);
-            tmp = receive();
-            if (strcmp(tmp, "DUNNO") == 0) {
-                print("[ERROR] DUNNO");
-            } else {
-                splitString(tmp, &tab);
+            print("Vous etes pret, attente des autres joueurs");
+            splitString(receive(), &tab);
 
-                if (strcmp(tab[0], "WELCO") == 0) { // [WELCO␣m␣h␣w␣f␣ip␣port***]
-                    uint8_t m = strtoul(tab[1], NULL, 16);
-                    uint16_t h = littleEndian16ToHost(strtoul(tab[2], NULL, 16));
-                    uint16_t w = littleEndian16ToHost(strtoul(tab[3], NULL, 16));
-                    uint8_t f = strtoul(tab[4], NULL, 16);
-                    char ip[strlen(tab[5])];
-                    strcpy(ip, tab[5]);
-                    for (int i = (int) strlen(tab[5]) - 1; i >= 0; i--) { // enleve les '#' de la fin de l'ip
-                        if (ip[i] == '#') {
-                            ip[i] = '\0';
-                        } else
-                            break;
-                    }
-                    print("La partie %d a commencee, le jeu est de taille %dx%d, et il y a %d fantomes", m, h, w, f);
-                    in_game = 1;
-                    char args[2][20];
-                    strcpy(args[0], ip);
-                    strcpy(args[1], tab[6]);
-                    pthread_create(&multicast_thread, NULL, multicastThread, (void *) &args);
-                    splitString(receive(), &tab);
+            if (strcmp(tab[0], "WELCO") == 0) { // [WELCO␣m␣h␣w␣f␣ip␣port***]
+                uint8_t m = atoi(tab[1]);
+                uint16_t h = atoi(tab[2]);
+                uint16_t w = atoi(tab[3]);
+                uint8_t f = atoi(tab[4]);
+                char ip[strlen(tab[5])];
+                strcpy(ip, tab[5]);
+                for (int i = (int) strlen(tab[5]) - 1; i >= 0; i--) { // enleve les '#' de la fin de l'ip
+                    if (ip[i] == '#') {
+                        ip[i] = '\0';
+                    } else
+                        break;
+                }
+                print("La partie %d a commencee, le jeu est de taille %dx%d, et il y a %d fantomes", m, h, w,
+                      f);
+                in_game = 1;
+                char args[2][20];
+                strcpy(args[0], ip);
+                strcpy(args[1], tab[6]);
+                pthread_create(&multicast_thread, NULL, multicastThread, (void *) &args);
+                splitString(receive(), &tab);
+                if (strcmp(tab[0], "POSIT") == 0) {
                     print("Ta position sur le plateau est (%s, %s)", tab[2], tab[3]);
                 } else
-                    print("[ERROR] DUNNO");
-            }
+                    print("[ERROR] position initiale non recu");
+            } else
+                print("[ERROR] DUNNO");
         } else if (strcmp(buff, "UNREG") == 0) { // [UNREG***]
             if (!in_party) {
-                print("[ERROR] Vous n'etes pas dans une partie");
+                print("[ERROR] Vous n'etes pas dans une partie, essayez plutot DISC!");
                 continue;
             }
             if (in_game) {
-                print("[ERROR] La partie a deja commencee, essaye plutot IQUIT");
+                print("[ERROR] La partie a deja commencee, essayez plutot IQUIT");
                 continue;
             }
             strcpy(mess, "UNREG***");
@@ -453,7 +526,7 @@ int main(int argc, char **argv) {
             send(sock, mess, strlen(mess), 0);
             splitString(receive(), &tab);
             if (strcmp(tab[0], "UNROK") == 0) { // [UNROK␣m***]
-                uint8_t m = strtoul(tab[1], NULL, 16);
+                uint8_t m = atoi(tab[1]);
                 print("Partie %d quitte", m);
                 in_game = 0;
                 in_party = 0;
@@ -463,16 +536,19 @@ int main(int argc, char **argv) {
         } else if (strcmp(buff, "SIZE?") == 0) { // [SIZE?␣m***]
             print("Entrez le numero de la partie");
             readInput(buff);
-            print("SIZE? %s", buff);
-            sprintf(mess, "SIZE? %s***", buff);
+            uint8_t num_partie = atoi(buff);
+
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
-            send(sock, mess, strlen(mess), 0);
+                print("[DEBUG] envoi: 'SIZE? %d***'", num_partie);
+            send(sock, "SIZE? ", 6, 0);
+            send(sock, &num_partie, sizeof(uint8_t), 0);
+            send(sock, "***", 3, 0);
+
             splitString(receive(), &tab);
             if (strcmp(tab[0], "SIZE!") == 0) { // [SIZE!␣m␣h␣w***]
-                uint8_t m = strtoul(tab[1], NULL, 16);
-                uint16_t h = littleEndian16ToHost(strtoul(tab[2], NULL, 16));
-                uint16_t w = littleEndian16ToHost(strtoul(tab[3], NULL, 16));
+                uint8_t m = atoi(tab[1]);
+                uint16_t h = atoi(tab[2]);
+                uint16_t w = atoi(tab[3]);
                 print("La partie %d est de taille %dx%d", m, h, w);
             } else {
                 print("[ERROR] DUNNO");
@@ -480,19 +556,24 @@ int main(int argc, char **argv) {
         } else if (strcmp(buff, "LIST?") == 0) { // [LIST? m***]
             print("Entrez le numero de la partie");
             readInput(buff);
-            print("LIST? %s", buff);
+            uint8_t m = atoi(buff);
 
             sprintf(mess, "LIST? %s***", buff);
             if (debug)
-                print("[DEBUG] envoi: '%s'", mess);
-            send(sock, mess, strlen(mess), 0);
+                print("[DEBUG] envoi: '%LIST? %d***'", m);
+            send(sock, "LIST? ", 6, 0);
+            send(sock, &m, sizeof(uint8_t), 0);
+            send(sock, "***", 3, 0);
+
             splitString(receive(), &tab);
             if (strcmp(tab[0], "LIST!") == 0) { // [LIST!␣m␣s***]
-                uint8_t m = strtoul(tab[1], NULL, 16);
-                uint8_t s = strtoul(tab[2], NULL, 16);
+
+                m = atoi(tab[1]);
+                uint8_t s = atoi(tab[2]);
                 print("Liste des joueurs dans la partie %d:", m);
                 for (int i = 0; i < s; ++i) {
-                    splitString(receive(), &tab); // [PLAYR␣id***]
+                    char *tmpe = receive();
+                    splitString(tmpe, &tab); // [PLAYR␣id***]
                     print("\t- %s", tab[1]);
                 }
             } else {
@@ -504,7 +585,7 @@ int main(int argc, char **argv) {
                 print("[DEBUG] envoi: '%s'", mess);
             send(sock, mess, strlen(mess), 0);
             tmp = receive();
-            if (strcmp(tmp, "DUNNO") != 0) {
+            if (strcmp(tmp, "DUNNO***") != 0) {
                 getGamesList(tmp); // [GAMES␣n***]
             }
 
@@ -523,13 +604,13 @@ int main(int argc, char **argv) {
             }
             strcat(mess, buff);
             strcat(mess, " ");
-            char d[BUFF_SIZE];
+            char pas[BUFF_SIZE];
             print("Entrez le nombre de pas");
-            readInput(d);
-            for (int i = 0; i < 3 - ((int) strlen(d)); i++) {
+            readInput(pas);
+            for (int i = 0; i < 3 - ((int) strlen(pas)); i++) {
                 strcat(mess, "0");
             }
-            strcat(mess, d);
+            strcat(mess, pas);
             strcat(mess, "***");
             if (debug)
                 print("[DEBUG] envoi: '%s'", mess);
@@ -546,10 +627,10 @@ int main(int argc, char **argv) {
             }
         } else if (strcmp(buff, "IQUIT") == 0) { // [IQUIT***]
             if (!in_party) {
-                break;
+                print("[ERROR] Vous n'etes pas dans une partie, essayez plutot DISC!");
             }
             if (!in_game) {
-                print("[ERROR] La partie n'a pas encore commencee, essaye plutot UNREG");
+                print("[ERROR] La partie n'a pas encore commencee, essayez plutot UNREG");
                 continue;
             }
             strcpy(mess, "IQUIT***");
@@ -571,7 +652,7 @@ int main(int argc, char **argv) {
             if (strcmp(tab[0], "DUNNO") == 0) {
                 print("[ERROR] DUNNO");
             } else { // [GLIS!␣s***]
-                uint8_t s = strtoul(tab[1], NULL, 16);
+                uint8_t s = atoi(tab[1]);
                 print("Les joueurs present dans la partie:");
                 for (int i = 0; i < (int) s; ++i) {
                     char *player = receive();
@@ -593,8 +674,8 @@ int main(int argc, char **argv) {
             if (debug)
                 print("[DEBUG] envoi: '%s'", mess);
             send(sock, mess, strlen(mess), 0);
-            tmp = receive();
-            if (strcmp(tmp, "MALL!") == 0) { // [MALL!***]
+            splitString(receive(), &tab);
+            if (strcmp(tab[0], "MALL!") == 0) { // [MALL!***]
                 print("Message envoye");
             } else {
                 print("[ERROR] Message non envoye");
@@ -611,16 +692,31 @@ int main(int argc, char **argv) {
             print("Entrez le message");
             readInput(message);
             sprintf(mess, "SEND? %s %s***", id, message);
-            print("%s ", mess);
             if (debug)
                 print("[DEBUG] envoi: '%s'", mess);
             send(sock, mess, strlen(mess), 0);
-            tmp = receive();
-            if (strcmp(tmp, "SEND!") == 0) { //  [SEND!***]
+            splitString(receive(), &tab);
+            if (strcmp(tab[0], "SEND!") == 0) { //  [SEND!***]
                 print("Message envoye");
-            } else { // [NSEND***]
+            } else if (strcmp(tab[0], "NSEND") == 0) { // [NSEND***]
                 print("[ERROR] Message non envoye");
             }
+        } else if (strcmp(buff, "DISC!") == 0) {
+            if (in_party) {
+                print("[ERROR] Vous etes deja dans une partie, essayez plutot UNREG");
+                continue;
+            }
+            if (in_game) {
+                print("[ERROR] La partie a deja commencee, essayez plutot IQUIT");
+                continue;
+            }
+            strcpy(mess, "DISC!***");
+            if (debug)
+                print("[DEBUG] envoi: '%s'", mess);
+            send(sock, mess, strlen(mess), 0);
+            print("%s", receive()); // [GOBYE***]
+            closeConnection(EXIT_SUCCESS, NULL);
+            closeConnection(EXIT_SUCCESS, NULL);
         } else {
             int testMov = 1;
             if (strcmp(buff, "z") == 0) {
@@ -636,16 +732,23 @@ int main(int argc, char **argv) {
                 print("[ERROR] Reessayez");
             }
             if (testMov) {
-                strcat(mess, " ");
-                strcat(mess, "001");
-                strcat(mess, "***");
+                strcat(mess, " 001***");
+                if (debug)
+                    print("[DEBUG] envoi: '%s'", mess);
                 send(sock, mess, strlen(mess), 0);
+
+                splitString(receive(), &tab);
+                if (strcmp(tab[0], "MOVE!") == 0) { // [MOVE!␣x␣y***]
+                    print("Vous etes maintenant a (%s, %s)", tab[1], tab[2]);
+                } else if (strcmp(tab[0], "MOVEF") == 0) { // [MOVEF␣x␣y␣p***]
+                    print("Vous etes maintenant a (%s, %s)", tab[1], tab[2]);
+                    print("Vous avez attrape un fantome! Votre score est %s", tab[3]);
+                } else {
+                    print("[ERROR] DUNNO");
+                }
             }
         }
     }
-    print("FIN, appuyez sur n'importe quelle touche pour fermer le jeu");
-    getch();
-
     closeConnection(EXIT_SUCCESS, NULL);
 }
 

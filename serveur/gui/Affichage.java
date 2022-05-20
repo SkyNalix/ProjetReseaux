@@ -6,7 +6,7 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
-public class Display extends JFrame {
+public class Affichage extends JFrame {
 
 	JPanel panneau;
 	JButton[][] buttonMap;
@@ -14,7 +14,7 @@ public class Display extends JFrame {
 	int hauteur;
 	int largeur;
 
-	public Display( int[][] lab ) {
+	public Affichage( int[][] lab ) {
 		super( "Display" );
 		this.lab = lab;
 		this.hauteur = lab.length;
@@ -27,7 +27,7 @@ public class Display extends JFrame {
 		addWindowListener( l );
 		panneauInit();
 		setContentPane( panneau );
-		setSize( 1000, 1000 );
+		setSize( 400, 400 );
 		setVisible( true );
 		updateContent( lab );
 	}

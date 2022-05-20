@@ -123,11 +123,12 @@ public class Partie {
 		for( Joueur joueur : listeJoueur ) {
 			try {
 				joueur.connexion.write( welco );
-				String posit = String.format( "POSIT %s %s %s***",
-											  joueur.getPseudo(),
-											  joueur.getPosition().getXStr(),
-											  joueur.getPosition().getYStr() );
-				joueur.connexion.write( Converter.convert( posit ) );
+				joueur.connexion.write( Converter.convert( String.format(
+						  "POSIT %s %s %s***",
+						  joueur.getPseudo(),
+						  joueur.getPosition().getXStr(),
+						  joueur.getPosition().getYStr()
+																		) ) );
 			} catch( Exception e ) {
 				e.printStackTrace();
 			}
