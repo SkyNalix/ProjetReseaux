@@ -265,6 +265,11 @@ public class Serveur implements Runnable {
 
 	public static void main( String[] args ) {
 		for( String arg : args ) {
+			if( arg.equals( "-h" )) {
+				System.out.println( "Lancement basique: java servuer/Serveur" );
+				System.out.println( "Options:\n\t--debug: mode verbeux, pour afficher les messages circulants ainsi que le " );
+				return;
+			}
 			if( arg.equals( "--debug" ) )
 				debug = true;
 			if( arg.equals( "--nogui" ) )

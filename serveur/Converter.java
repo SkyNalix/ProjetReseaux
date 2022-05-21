@@ -5,38 +5,36 @@ import java.nio.ByteOrder;
 
 public class Converter {
 
-	private static int[] calcSize( Object[] l ) {
-		int endian = 2; // 1 = little 2 = big;
+	private static int calcSize( Object[] l ) {
 		int res = 0; for( int i = 0; i < l.length; i++ ) {
 			Object obj = l[i];
 			if( obj instanceof String ) {
 				res += ( (String) obj ).length();
 			} else if( obj instanceof Nombre ) {
 				Nombre nombre = (Nombre) obj;
-				if( nombre.n < 0 ) continue;
 				res += nombre.nbr_byte;
-			} if( i < l.length - 2 ) {
-				endian = 1;
+			}
+			if( i < l.length - 2 ) { // pour l'espace
 				res++;
 			}
-		} return new int[]{ endian, res };
+		} return res;
 	}
 
 	public static byte[] convert( Object... l ) {
-		int[] info = calcSize( l );
-		ByteBuffer bb = ByteBuffer.allocate( info[1] );
-//		bb.order( info[0] == 1 ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN );
+		ByteBuffer bb = ByteBuffer.allocate( calcSize( l ) );
 		bb.order( ByteOrder.BIG_ENDIAN );
 		for( int i = 0; i < l.length; i++ ) {
 			Object obj = l[i];
 			if( obj instanceof String ) {
-				bb.put( ( (String) obj ).getBytes() );
+				String s = (String) obj;
+				bb.put( s.getBytes() );
 			} else if( obj instanceof Nombre ) {
 				Nombre nombre = (Nombre) obj;
+				int n = Math.max( 0, nombre.n );
 				if( nombre.nbr_byte == 1 ) {
-					bb.put( (byte) nombre.n );
+					bb.put( (byte) Math.min( 255, n ) );
 				} else if( nombre.nbr_byte == 2 ) {
-					bb.put( intToTwoBytes( nombre.n ) );
+					bb.put( intToTwoBytes( Math.min( 1000, n ) ) );
 				}
 			}
 			if( i < l.length - 2 )

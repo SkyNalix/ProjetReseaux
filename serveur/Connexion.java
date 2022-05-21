@@ -46,7 +46,7 @@ public class Connexion {
 
 	public String lire() {
 		String line = "";
-		ByteBuffer word = ByteBuffer.allocate( 40 );
+		ByteBuffer word = ByteBuffer.allocate( 200 );
 		int stars_counter = 0;
 		try {
 			byte[] entetebytes = new byte[5];
@@ -75,7 +75,7 @@ public class Connexion {
 				} else if( c == ' ' ) {
 					if( word.position() > 0 ) {
 						line += " " + convertword( entete, word.array() ).trim();
-						word = ByteBuffer.allocate( 40 );
+						word = ByteBuffer.allocate( 200 );
 					}
 				} else {
 					word.put( b );

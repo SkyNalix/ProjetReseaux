@@ -19,7 +19,7 @@ pthread_t multicast_thread;
 pthread_t udp_thread;
 
 // variables pour l'affichage avec Ncurses
-char stdin_buff[1024];
+char stdin_buff[300];
 short input_x = 0;
 short print_y = 0;
 short max_y = 0;
@@ -184,9 +184,9 @@ void *multicastThread(void *arg) {
         print("[ERROR] vous n'allez pas recevoir les messages globales");
         pthread_exit((void *) EXIT_FAILURE);
     }
-    char tampon[250];
+    char tampon[300];
     while (while_continue) {
-        ssize_t rec = recv(multicast_sock, tampon, 100, 0);
+        ssize_t rec = recv(multicast_sock, tampon, 299, 0);
         if (rec < 3) continue;
         if (rec < 0) break;
         tampon[rec - 3] = '\0';
@@ -592,14 +592,15 @@ int main(int argc, char **argv) {
                 memcpy(&s, tmp + 6, sizeof(uint8_t));
                 print("Les joueurs present dans la partie:");
                 for (int i = 0; i < (int) s; ++i) {
-                    sz = receive(tmp, 24); // [GPLYR␣id␣x␣y␣p***]
-                    if (sz == 24 && strncmp(tmp, "GPLYR", 5) == 0) {
+                    sz = receive(tmp, 30); // [GPLYR␣id␣x␣y␣p***]
+                    if (sz == 30 && strncmp(tmp, "GPLYR", 5) == 0) {
                         tmp = cutEnd(tmp);
+                        // GPLYR username 007 006 0
                         print("\t- %s, position (%s, %s), score: %s",
                               subString(tmp, 6, 8),
-                              subString(tmp, 16, 3),
-                              subString(tmp, 20, 3),
-                              subString(tmp, 24, 4));
+                              subString(tmp, 15, 3),
+                              subString(tmp, 19, 3),
+                              subString(tmp, 23, 4));
                     }
                 }
             }
