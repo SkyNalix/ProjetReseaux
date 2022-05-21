@@ -64,7 +64,8 @@ public class Joueur extends Personne {
 			msg += tab[i] + ( i < tab.length - 1 ? " " : "" );
 		}
 
-		System.out.println( "id|" + id + "|" );
+		if( Serveur.debug )
+			System.out.printf( "%s envoi MP a %s : %s", getPseudo(), id, msg );
 		for( Joueur joueur : partie.getListeJoueur() ) {
 			if( joueur.getPseudo().equals( id ) ) {
 				try {
