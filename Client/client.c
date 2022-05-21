@@ -264,6 +264,7 @@ int main(int argc, char **argv) {
             printf("Options: \n\t--debug : affiche les messages de debug\n");
             printf("\t--address : pour entrer une addresse où se connecter\n");
             printf("\tExemple: ./client 4243 --address=lulu.informatique.univ-paris-diderot.fr\n");
+            return 0;
         } else if (strcmp(argv[i], "--debug") == 0) {
             debug = 1;
         } else if (strncmp(argv[i], "--address=", 10) == 0) {
