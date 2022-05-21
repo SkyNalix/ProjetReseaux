@@ -32,13 +32,13 @@ public class Serveur implements Runnable {
 				}
 				if( x == null || this.connexion.socket.isClosed() ) {
 					if( joueur != null ) {
-						System.out.println( "|" + joueur.getPseudo() + " has disconnected|" );
+						if( debug )
+							System.out.println( "|" + joueur.getPseudo() + " has disconnected|" );
 						joueur.getPartie().retirerJoueur( joueur );
 					}
 					return;
 				}
 
-				System.out.println( "|" + x + "|" );
 				try {
 					if( x.equals( "GAME?***" ) ) { //GAMES*** affiche le nb de partie non lancé
 						Partie.envoyerListePartie( connexion );
@@ -272,18 +272,6 @@ public class Serveur implements Runnable {
 		}
 
 		try {
-			Joueur j1 = new Joueur( null, "joueur01", 4242 );
-			Joueur j2 = new Joueur( null, "joueur02", 4243 );
-			Joueur j3 = new Joueur( null, "joueur03", 4244 );
-
-			j1.setReady( true );
-			j2.setReady( true );
-			j3.setReady( true );
-
-			Partie test1 = new Partie();
-			Partie test2 = new Partie();
-			test1.ajouterJoueur( j1 ); test1.ajouterJoueur( j2 );
-			test2.ajouterJoueur( j3 );
 
 			ServerSocket servSocket = null;
 			int port = 4243;

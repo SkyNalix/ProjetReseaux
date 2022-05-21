@@ -259,7 +259,12 @@ int main(int argc, char **argv) {
         }
     }
     for (int i = 0; i < argc; ++i) {
-        if (strcmp(argv[i], "--debug") == 0) {
+        if(strcmp(argv[i], "-h") == 0) {
+            printf("Lancement basique: ./client 4243\n");
+            printf("Options: \n\t--debug : affiche les messages de debug\n");
+            printf("\t--address : pour entrer une addresse où se connecter\n");
+            printf("\tExemple: ./client 4243 --address=lulu.informatique.univ-paris-diderot.fr\n");
+        } else if (strcmp(argv[i], "--debug") == 0) {
             debug = 1;
         } else if (strncmp(argv[i], "--address=", 10) == 0) {
             strcpy(address, argv[i] + 10);
@@ -376,7 +381,6 @@ int main(int argc, char **argv) {
             sprintf(tosend, "REGIS %s %d ", id, port2);
             memcpy(tosend + 20, &m, sizeof(uint8_t));
             memcpy(tosend + 21, "***", sizeof(char) * 3);
-            print("'%s'", tosend);
             send(sock, tosend, 24, 0);
             sz = receive(tmp, 10);
             if (sz == 10 && strncmp(tmp, "REGOK", 5) == 0) { //  [REGOK␣m***]

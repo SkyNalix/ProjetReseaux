@@ -50,9 +50,6 @@ public class Labyrinthe {
 					Position fantomePos = new Position( pos.getX() - 1, pos.getY() );
 					//retire fantome
 					elimineFantome( j, fantomePos );
-					j.setScore( j.getScore() + 1 );
-					//envoie message
-					jeu.playerCoughtGhost( j, fantomePos );
 				}
 				this.posJoueurNbr[pos.getX()][pos.getY()].pop();
 				if( this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty() ) {
@@ -66,7 +63,6 @@ public class Labyrinthe {
 		j.setPosition( pos );
 		if( getNbFantomes() == 0 )
 			jeu.partie.supprPartie();
-		print();
 	}
 
 	public synchronized void moveRight( Joueur j, int pas ) throws IOException {
@@ -78,10 +74,7 @@ public class Labyrinthe {
 				if( this.labyrinthe[pos.getX()][pos.getY() + 1] == 2 ) {
 					Position fantomePos = new Position( pos.getX(), pos.getY() + 1 );
 					//retire Fantome
-					j.setScore( j.getScore() + 1 );
 					elimineFantome( j, fantomePos );
-					//envoie message
-					jeu.playerCoughtGhost( j, fantomePos );
 				}
 				this.posJoueurNbr[pos.getX()][pos.getY()].pop();
 				if( this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty() ) {
@@ -96,7 +89,6 @@ public class Labyrinthe {
 		j.setPosition( pos );
 		if( getNbFantomes() == 0 )
 			jeu.partie.supprPartie();
-		print();
 	}
 
 	public synchronized void moveLeft( Joueur j, int pas ) throws IOException {
@@ -108,10 +100,7 @@ public class Labyrinthe {
 				if( this.labyrinthe[pos.getX()][pos.getY() - 1] == 2 ) {
 					Position fantomePos = new Position( pos.getX(), pos.getY() - 1 );
 					//effacce fantome
-					j.setScore( j.getScore() + 1 );
 					elimineFantome( j, fantomePos );
-					//envoie message
-					jeu.playerCoughtGhost( j, fantomePos );
 				}
 				this.posJoueurNbr[pos.getX()][pos.getY()].pop();
 				if( this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty() ) {
@@ -126,7 +115,6 @@ public class Labyrinthe {
 		this.labyrinthe[pos.getX()][pos.getY()] = 3;
 		if( getNbFantomes() == 0 )
 			jeu.partie.supprPartie();
-		print();
 	}
 
 	public synchronized void moveDown( Joueur j, int pas ) throws IOException {
@@ -138,10 +126,7 @@ public class Labyrinthe {
 				if( this.labyrinthe[pos.getX() + 1][pos.getY()] == 2 ) {
 					Position fantomePos = new Position( pos.getX() + 1, pos.getY() );
 					//efface fantome
-					j.setScore( j.getScore() + 1 );
 					elimineFantome( j, fantomePos );
-					//envoie message
-					jeu.playerCoughtGhost( j, fantomePos );
 				}
 				this.posJoueurNbr[pos.getX()][pos.getY()].pop();
 				if( this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty() ) {
@@ -156,10 +141,7 @@ public class Labyrinthe {
 		this.labyrinthe[pos.getX()][pos.getY()] = 3;
 		if( getNbFantomes() == 0 )
 			jeu.partie.supprPartie();
-		print();
 	}
-
-	//
 
 	/**
 	 * initialisation du plateau
@@ -351,18 +333,25 @@ public class Labyrinthe {
 		}
 		fantomes.clear();
 		fantomes = newFantomesList;
+		j.setScore( j.getScore() + 1 );
+		//envoie message
 		j.connexion.write( Converter.convert( String.format( "MOVEF %s %s %s***",
 															 pos.getXStr(),
 															 pos.getYStr(),
 															 j.getScoreStr() ) ) );
+		String scoreChange = String.format( "SCORE %s %s %s %s+++",
+											j.getPseudo(),
+											j.getScoreStr(),
+											pos.getXStr(),
+											pos.getYStr() );
+		Connexion.sendUDP( jeu.partie.getAddress(), Converter.convert( scoreChange ) );
 	}
 
 	public static final String ANSI_RESET = "\u001B[0m";
 	public static final String ANSI = "\u001B[42m";
 	public static final String ANSI_RED = "\u001B[31m";
 
-	public void print() {//affiche
-
+	public void print() { // affiche du lab dans la console
 		for( int i = 0; i < hauteur; i++ ) {
 			for( int j = 0; j < largeur; j++ ) {
 				if( this.labyrinthe[i][j] == -1 ) {
@@ -376,7 +365,6 @@ public class Labyrinthe {
 				} else {
 					System.out.print( ANSI + "V " + ANSI_RESET );
 				}
-
 			}
 			System.out.println();
 		}

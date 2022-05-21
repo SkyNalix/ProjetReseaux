@@ -47,11 +47,10 @@ public class Connexion {
 	public String lire() {
 		String line = "";
 		ByteBuffer word = ByteBuffer.allocate( 40 );
-		int sz;
 		int stars_counter = 0;
 		try {
 			byte[] entetebytes = new byte[5];
-			sz = channelReception.read( entetebytes, 0, 5 );
+			int sz = channelReception.read( entetebytes, 0, 5 );
 			if( sz != 5 )
 				return null;
 			String entete = new String( entetebytes );
@@ -85,14 +84,19 @@ public class Connexion {
 		} catch( IOException e ) {
 			return null;
 		}
+		if( Serveur.debug )
+			System.out.println( "lu: " + line );
 		return line;
 	}
 
 	public static void sendUDP( InetSocketAddress ia, byte[] b ) throws IOException {
-		DatagramSocket sock = new DatagramSocket();
+		try {
+			DatagramSocket sock = new DatagramSocket();
 		DatagramPacket paquet = new DatagramPacket( b, b.length, ia );
 		sock.send( paquet );
 		sock.close();
+		} catch( Exception ignored ) {
+		}
 	}
 
 }

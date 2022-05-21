@@ -23,14 +23,15 @@ public class Jeu {
 			if( !Serveur.nogui )
 				this.affichage = new Affichage( this.lab.getLabyrinthe() );
 		} catch( Exception ignored ) {
+			affichage = null;
 		}
 		fantomeMove.start();
 	}
 
 	public void refresh() {
-		if( !Serveur.nogui )
+		if( !Serveur.nogui && affichage != null )
 			affichage.updateContent( this.lab.getLabyrinthe() );
-		else
+		else if( Serveur.debug )
 			lab.print();
 	}
 
@@ -46,22 +47,10 @@ public class Jeu {
 			} catch( InterruptedException ignored ) {
 			}
 			go = this.lab.fantomeMove();
-			if( !Serveur.nogui )
+			if( !Serveur.nogui && affichage != null )
 				affichage.updateContent( this.lab.getLabyrinthe() );
 		}
 	} );
 
-	public void playerCoughtGhost( Joueur joueur,Position fantomPos ) {
-		//envoie message
-		String scoreChange = String.format( "SCORE %s %s %s %s+++",
-											joueur.getPseudo(),
-											joueur.getScoreStr(),
-											fantomPos.getXStr(),
-											fantomPos.getYStr() );
-		try {
-			Connexion.sendUDP( partie.getAddress(), Converter.convert( scoreChange ) );
-		} catch( IOException ignored ) {
-		}
-	}
 
 }
