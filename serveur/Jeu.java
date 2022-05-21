@@ -19,8 +19,11 @@ public class Jeu {
 		this.partie = partie;
 		this.joueurs = partie.getListeJoueur();
 		this.lab = new Labyrinthe( this );
-		if( !Serveur.nogui )
-			this.affichage = new Affichage( this.lab.getLabyrinthe() );
+		try {
+			if( !Serveur.nogui )
+				this.affichage = new Affichage( this.lab.getLabyrinthe() );
+		} catch( Exception ignored ) {
+		}
 		fantomeMove.start();
 	}
 
@@ -48,13 +51,13 @@ public class Jeu {
 		}
 	} );
 
-	public void playerCoughtGhost( Joueur joueur ) {
+	public void playerCoughtGhost( Joueur joueur,Position fantomPos ) {
 		//envoie message
 		String scoreChange = String.format( "SCORE %s %s %s %s+++",
 											joueur.getPseudo(),
 											joueur.getScoreStr(),
-											joueur.getPosition().getXStr(),
-											joueur.getPosition().getYStr() );
+											fantomPos.getXStr(),
+											fantomPos.getYStr() );
 		try {
 			Connexion.sendUDP( partie.getAddress(), Converter.convert( scoreChange ) );
 		} catch( IOException ignored ) {

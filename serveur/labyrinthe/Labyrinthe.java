@@ -47,11 +47,12 @@ public class Labyrinthe {
 				break;
 			} else {
 				if( this.labyrinthe[pos.getX() - 1][pos.getY()] == 2 ) {
+					Position fantomePos = new Position( pos.getX() - 1, pos.getY() );
 					//retire fantome
-					elimineFantome( j, new Position( pos.getX() - 1, pos.getY() ) );
+					elimineFantome( j, fantomePos );
 					j.setScore( j.getScore() + 1 );
 					//envoie message
-					jeu.playerCoughtGhost( j );
+					jeu.playerCoughtGhost( j, fantomePos );
 				}
 				this.posJoueurNbr[pos.getX()][pos.getY()].pop();
 				if( this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty() ) {
@@ -75,11 +76,12 @@ public class Labyrinthe {
 				break;
 			} else {
 				if( this.labyrinthe[pos.getX()][pos.getY() + 1] == 2 ) {
+					Position fantomePos = new Position( pos.getX(), pos.getY() + 1 );
 					//retire Fantome
 					j.setScore( j.getScore() + 1 );
-					elimineFantome( j, new Position( pos.getX(), pos.getY() + 1 ) );
+					elimineFantome( j, fantomePos );
 					//envoie message
-					jeu.playerCoughtGhost( j );
+					jeu.playerCoughtGhost( j, fantomePos );
 				}
 				this.posJoueurNbr[pos.getX()][pos.getY()].pop();
 				if( this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty() ) {
@@ -104,11 +106,12 @@ public class Labyrinthe {
 				break;
 			} else {
 				if( this.labyrinthe[pos.getX()][pos.getY() - 1] == 2 ) {
+					Position fantomePos = new Position( pos.getX(), pos.getY() - 1 );
 					//effacce fantome
 					j.setScore( j.getScore() + 1 );
-					elimineFantome( j, new Position( pos.getX(), pos.getY() - 1 ) );
+					elimineFantome( j, fantomePos );
 					//envoie message
-					jeu.playerCoughtGhost( j );
+					jeu.playerCoughtGhost( j, fantomePos );
 				}
 				this.posJoueurNbr[pos.getX()][pos.getY()].pop();
 				if( this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty() ) {
@@ -133,11 +136,12 @@ public class Labyrinthe {
 				break;
 			} else {
 				if( this.labyrinthe[pos.getX() + 1][pos.getY()] == 2 ) {
+					Position fantomePos = new Position( pos.getX() + 1, pos.getY() );
 					//efface fantome
 					j.setScore( j.getScore() + 1 );
-					elimineFantome( j, new Position( pos.getX() + 1, pos.getY() ) );
+					elimineFantome( j, fantomePos );
 					//envoie message
-					jeu.playerCoughtGhost( j );
+					jeu.playerCoughtGhost( j, fantomePos );
 				}
 				this.posJoueurNbr[pos.getX()][pos.getY()].pop();
 				if( this.posJoueurNbr[pos.getX()][pos.getY()].isEmpty() ) {

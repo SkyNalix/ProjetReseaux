@@ -2,17 +2,8 @@ package serveur;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Arrays;
 
 public class Converter {
-
-	public static byte[] dunnoMessageByteArray() {
-		ByteBuffer bbuf = ByteBuffer.allocate( 8 );
-		bbuf.order( ByteOrder.BIG_ENDIAN );
-		bbuf.put( "DUNNO***".getBytes() );
-		return bbuf.array();
-	}
-
 
 	private static int[] calcSize( Object[] l ) {
 		int endian = 2; // 1 = little 2 = big;

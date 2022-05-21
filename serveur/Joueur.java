@@ -1,9 +1,7 @@
 package serveur;
 
-import java.io.*;
 import java.net.*;
 
-import serveur.labyrinthe.Labyrinthe;
 import serveur.labyrinthe.Personne;
 
 public class Joueur extends Personne {
@@ -70,7 +68,6 @@ public class Joueur extends Personne {
 		for( Joueur joueur : partie.getListeJoueur() ) {
 			if( joueur.getPseudo().equals( id ) ) {
 				try {
-
 					//String s = "Envoi";
 					byte[] data = Converter.convert( String.format(
 							  "MESSP %s %s+++", getPseudo(), msg
