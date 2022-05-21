@@ -12,7 +12,7 @@ public class Partie {
 	private final LinkedList<Joueur> listeJoueur = new LinkedList<>();
 	private boolean lancer = false;
 	private Jeu jeu;
-	private final int hauteur = 10, largeur = 10;
+	private int hauteur = 10, largeur = 10;
 
 	public Partie() {
 		int id = 0;
@@ -112,6 +112,8 @@ public class Partie {
 	public void launchGame() {
 		lancer = true;
 		jeu = new Jeu( this );
+		hauteur = 10 + (getNbJoueur()/2);
+		largeur = 10 + (getNbJoueur()/2);
 		byte[] welco = Converter.convert( "WELCO",
 										  new Nombre( getID(), 1 ),
 										  new Nombre( getHauteur(), 2 ),
