@@ -1,4 +1,7 @@
-# Projet Reseaux - groupe 45
+# Projet Reseaux - Projet d'étudiant en Licence Informatique
+
+Le projet consiste à commucation faire communiquer un client écrit en C et un serveur écrit en Java pour jouer à un simple jeu, 
+differents types de communications ont été utilisé dans ce projet comme le TCP, UDP et Multicast 
 
 ## Compilation:
 Il suffit de faire 'make' au répertoire racine du projet
